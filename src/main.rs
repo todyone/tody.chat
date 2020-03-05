@@ -1,8 +1,9 @@
 #![feature(async_closure)]
 
 mod actors;
+mod types;
 
-use actors::Server;
+use actors::{Database, Server};
 use failure::Error;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -13,20 +14,27 @@ async fn main() -> Result<(), Error> {
     log::info!("Tody.CRM - version {}", clap::crate_version!());
 
     log::debug!("Starting database actor...");
+    let database = Database::new();
+    let mut database_handle = meio::spawn(database);
 
     log::debug!("Starting HTTP server...");
     let addr = ([127, 0, 0, 1], 3030).into();
     let server = Server::new(addr);
-    let mut handle = meio::spawn(server);
+    let mut server_handle = meio::spawn(server);
 
     log::info!("Press Ctrl-C to terminate.");
     tokio::signal::ctrl_c().await?;
 
     log::debug!("Terminating HTTP server...");
-    handle.terminate();
-    let joiner = handle.join();
-    if let Err(err) = timeout(Duration::from_secs(10), joiner).await {
+    server_handle.terminate();
+    if let Err(err) = timeout(Duration::from_secs(10), server_handle.join()).await {
         log::error!("Can't terminate the server: {}", err);
+    }
+
+    log::debug!("Terminating the database actor...");
+    database_handle.terminate();
+    if let Err(err) = timeout(Duration::from_secs(10), database_handle.join()).await {
+        log::error!("Can't terminate the database actor: {}", err);
     }
 
     log::info!("Thank you for using Tody 🐦 App!");
