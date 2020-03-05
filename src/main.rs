@@ -11,7 +11,7 @@ use tokio::time::timeout;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     env_logger::try_init()?;
-    log::info!("Tody.CRM - version {}", clap::crate_version!());
+    log::info!("Tody.Chat - version {}", clap::crate_version!());
 
     log::debug!("Starting database actor...");
     let database = Database::new();

@@ -1,6 +1,6 @@
 [package]
 publish = false
-name = "tody-crm"
+name = "tody-chat"
 version = "0.1.0"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 edition = "2018"
