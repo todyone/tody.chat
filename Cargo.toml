@@ -18,4 +18,6 @@ tokio = { version = "0.2.13", features = ["full"] }
 warp = "0.2.2"
 
 [build-dependencies]
+async-trait = "0.1.24"
 failure = "0.1.6"
+tokio = { version = "0.2.13", features = ["full"] }
