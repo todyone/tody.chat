@@ -16,3 +16,6 @@ meio = { git = "ssh://git@github.com/DenisKolodin/meio" }
 rusqlite = "0.21.0"
 tokio = { version = "0.2.13", features = ["full"] }
 warp = "0.2.2"
+
+[build-dependencies]
+failure = "0.1.6"
