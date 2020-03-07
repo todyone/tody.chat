@@ -1,0 +1,29 @@
+use crate::agents::{Connector, Notification};
+use yew::prelude::*;
+
+pub struct Splash {
+}
+
+pub enum Msg {
+}
+
+impl Component for Splash {
+    type Message = Msg;
+    type Properties = ();
+
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self { }
+    }
+
+    fn update(&mut self, _: Self::Message) -> ShouldRender {
+        true
+    }
+
+    fn view(&self) -> Html {
+        html! {
+            <div class="loader">
+                <img src="/loader.svg" />
+            </div>
+        }
+    }
+}

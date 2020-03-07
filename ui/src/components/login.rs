@@ -18,10 +18,7 @@ impl Component for Login {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|n| Msg::Notification(n));
         let connector = Connector::bridge(callback);
-        Self {
-            link,
-            connector,
-        }
+        Self { link, connector }
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

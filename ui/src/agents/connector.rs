@@ -44,8 +44,7 @@ impl Agent for Connector {
 
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
         match msg {
-            Action::SetCredentials => {
-            }
+            Action::SetCredentials => {}
         }
     }
 

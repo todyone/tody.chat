@@ -1,18 +1,15 @@
 use yew::prelude::*;
 
-pub struct Chat {
-}
+pub struct Chat {}
 
-pub enum Msg {
-}
+pub enum Msg {}
 
 impl Component for Chat {
     type Message = Msg;
     type Properties = ();
 
     fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
-        Self {
-        }
+        Self {}
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {

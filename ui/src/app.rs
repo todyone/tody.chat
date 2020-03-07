@@ -1,5 +1,5 @@
 use crate::agents::{Connector, Notification, Status};
-use crate::components::{Chat, Login};
+use crate::components::{Chat, Login, Splash};
 use yew::prelude::*;
 
 enum Scene {
@@ -38,23 +38,19 @@ impl Component for App {
             Msg::Login => {
                 self.scene = Scene::Main;
             }
-            Msg::Notification(notification) => {
-                match notification {
-                    Notification::StatusChanged(status) => {
-                        match status {
-                            Status::LoggedIn => {
-                                self.scene = Scene::Main;
-                            }
-                            Status::Disconnected => {
-                                self.scene = Scene::Splash;
-                            }
-                            Status::Connected => {
-                                self.scene = Scene::Login;
-                            }
-                        }
+            Msg::Notification(notification) => match notification {
+                Notification::StatusChanged(status) => match status {
+                    Status::LoggedIn => {
+                        self.scene = Scene::Main;
                     }
-                }
-            }
+                    Status::Disconnected => {
+                        self.scene = Scene::Splash;
+                    }
+                    Status::Connected => {
+                        self.scene = Scene::Login;
+                    }
+                },
+            },
         }
         true
     }
@@ -63,7 +59,7 @@ impl Component for App {
         match self.scene {
             Scene::Splash => {
                 html! {
-                    <p>{ "SPLASH" }</p>
+                    <Splash />
                 }
             }
             Scene::Login => {
