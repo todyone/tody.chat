@@ -1,3 +1,49 @@
-* { margin: 0;, padding: 0; }
+@import url('https://fonts.googleapis.com/css?family=Noto+Sans:400,700&display=swap');
 
-sidebar { background-color: #3f0e40; }
+* {
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 15px;
+    margin: 0;
+    padding: 0;
+}
+
+
+.app {
+    background-color: #fff;
+    display: grid;
+    height: 100vh;
+    width: 100vw;
+    grid-template-columns: 220px 1fr 100px;
+    grid-template-rows: auto 1fr auto;
+}
+
+.user {
+        color: #fff;
+        background-color: #3f0e40;
+
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.header {
+    grid-column: 2 / 4;
+    grid-row: 1;
+}
+
+.channels {
+        color: #fff;
+        background-color: #3f0e40;
+
+    grid-column: 1;
+    grid-row: 2 / 4;
+}
+
+.chat {
+    grid-column: 2 / 4;
+    grid-row: 2;
+}
+
+.message {
+    grid-column: 2 / 4;
+    grid-row: 3;
+}

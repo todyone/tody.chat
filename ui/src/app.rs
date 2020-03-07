@@ -19,18 +19,20 @@ impl Component for App {
     fn view(&self) -> Html {
         html! {
             <div class="app">
-                <div class="navbar">
-                    <div class="team">
-                        <p>{ "Tody.Chat" }</p>
-                    </div>
-                    <div class="channel">
-                    </div>
-                    <div class="search">
-                    </div>
+                <div class="user">
+                    <p>{ "User" }</p>
                 </div>
-                <div class="sidebar">
+                <div class="channels">
+                    <p>{ "Channels" }</p>
                 </div>
-                <div class="mainview">
+                <div class="header">
+                    <p>{ "Header" }</p>
+                </div>
+                <div class="chat">
+                    <p>{ "Chat" }</p>
+                </div>
+                <div class="message">
+                    <p>{ "Message" }</p>
                 </div>
             </div>
         }
