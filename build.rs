@@ -47,7 +47,7 @@ impl RunIt for Command {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    Command::new("./build_ui.sh")
+    Command::new("make.sh")
         .run_it("Can't build UI")
         .await?;
 

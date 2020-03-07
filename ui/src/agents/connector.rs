@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use yew::services::WebSocketService;
 use yew::worker::*;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -22,6 +23,7 @@ pub enum Notification {
 /// Keeps connection to WebSockets automatically.
 pub struct Connector {
     status: Status,
+    ws: WebSocketService,
     link: AgentLink<Connector>,
     subscribers: HashSet<HandlerId>,
 }
@@ -35,6 +37,7 @@ impl Agent for Connector {
     fn create(link: AgentLink<Self>) -> Self {
         Self {
             status: Status::Disconnected,
+            ws: WebSocketService::new(),
             link,
             subscribers: HashSet::new(),
         }
