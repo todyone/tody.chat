@@ -1,6 +1,7 @@
 #![feature(async_closure)]
 
 mod actors;
+mod assets;
 mod types;
 
 use actors::{Database, Server};
