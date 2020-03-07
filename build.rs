@@ -13,7 +13,7 @@ where
     if let Some(stream) = stream {
         let mut lines = BufReader::new(stream).lines();
         while let Some(line) = lines.next_line().await? {
-            eprint!("{}", line);
+            eprintln!("{}", line);
         }
     }
     Ok(())

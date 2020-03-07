@@ -1,40 +1,52 @@
+use crate::components::{Chat, Login};
 use yew::prelude::*;
 
-pub struct App {}
+enum Scene {
+    Login,
+    Main,
+}
 
-pub enum Msg {}
+pub struct App {
+    link: ComponentLink<Self>,
+    scene: Scene,
+}
+
+pub enum Msg {
+    Login,
+}
 
 impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
-        App {}
+    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+        Self {
+            link,
+            scene: Scene::Login,
+        }
     }
 
-    fn update(&mut self, _msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::Login => {
+                self.scene = Scene::Main;
+            }
+        }
         true
     }
 
     fn view(&self) -> Html {
-        html! {
-            <div class="app">
-                <div class="user">
-                    <p>{ "User" }</p>
-                </div>
-                <div class="channels">
-                    <p>{ "Channels" }</p>
-                </div>
-                <div class="header">
-                    <p>{ "Header" }</p>
-                </div>
-                <div class="chat">
-                    <p>{ "Chat" }</p>
-                </div>
-                <div class="message">
-                    <p>{ "Message" }</p>
-                </div>
-            </div>
+        match self.scene {
+            Scene::Login => {
+                html! {
+                    <Login />
+                }
+            }
+            Scene::Main => {
+                html! {
+                    <Chat />
+                }
+            }
         }
     }
 }
