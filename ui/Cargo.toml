@@ -9,5 +9,6 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
+serde = { version = "1.0.104", features = ["derive"] }
 wasm-bindgen = "0.2.59"
 yew = { git = "ssh://git@github.com/yewstack/yew", features = ["web_sys"] }

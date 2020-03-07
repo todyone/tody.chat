@@ -387,6 +387,7 @@ dependencies = [
 name = "tody-chat-ui"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "wasm-bindgen",
  "yew",
 ]
