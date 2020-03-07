@@ -25,3 +25,7 @@ warp = "0.2.2"
 async-trait = "0.1.24"
 failure = "0.1.6"
 tokio = { version = "0.2.13", features = ["full"] }
+
+[features]
+default = []
+refresh = []

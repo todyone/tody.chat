@@ -18,7 +18,21 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <p>{ "Hello world!" }</p>
+            <div class="app">
+                <div class="navbar">
+                    <div class="team">
+                        <p>{ "Tody.Chat" }</p>
+                    </div>
+                    <div class="channel">
+                    </div>
+                    <div class="search">
+                    </div>
+                </div>
+                <div class="sidebar">
+                </div>
+                <div class="mainview">
+                </div>
+            </div>
         }
     }
 }

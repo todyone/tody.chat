@@ -70,6 +70,7 @@ async fn main() -> Result<(), Error> {
             "-cvzf",
             tar_path,
             "index.html",
+            "styles.css",
             "pkg/bundle.js",
             "pkg/tody_chat_ui_bg.wasm",
         ])
