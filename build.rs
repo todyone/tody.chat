@@ -47,34 +47,20 @@ impl RunIt for Command {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    Command::new("wasm-pack")
-        .args(&["build", "--target", "web"])
-        .current_dir("ui")
-        .run_it("Can't compile UI")
+    Command::new("./build_ui.sh")
+        .run_it("Can't build UI")
         .await?;
 
-    Command::new("rollup")
-        .args(&["./main.js", "--format", "iife", "--file", "./pkg/bundle.js"])
-        .current_dir("ui")
-        .run_it("Can't rollup UI")
-        .await?;
-
+    let tar = "ui.tar.gz";
     let out_path = PathBuf::from(env::var("OUT_DIR")?);
-    let tar_path = out_path.join("ui.tar.gz");
+    let tar_path = out_path.join(tar);
     let tar_path = tar_path
         .to_str()
         .ok_or_else(|| format_err!("can't create path to archive"))?;
 
-    Command::new("tar")
-        .args(&[
-            "-cvzf",
-            tar_path,
-            "index.html",
-            "styles.css",
-            "pkg/bundle.js",
-            "pkg/tody_chat_ui_bg.wasm",
-        ])
-        .current_dir("ui")
+    Command::new("mv")
+        .args(&[tar, tar_path])
+        .current_dir("target")
         .run_it("Can't pack UI")
         .await?;
 
