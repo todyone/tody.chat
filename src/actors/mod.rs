@@ -4,5 +4,5 @@ pub use controller::Controller;
 mod database;
 pub use database::Database;
 
-mod server;
-pub use server::Server;
+mod live_server;
+pub use live_server::LiveServer;

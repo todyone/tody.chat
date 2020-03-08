@@ -15,18 +15,18 @@ use warp::{
     Filter, Reply,
 };
 
-pub struct Server {
+pub struct LiveServer {
     addr: SocketAddr,
 }
 
-impl Server {
+impl LiveServer {
     pub fn new(addr: SocketAddr) -> Self {
         Self { addr }
     }
 }
 
 #[async_trait]
-impl Actor for Server {
+impl Actor for LiveServer {
     type Message = ();
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
@@ -35,11 +35,11 @@ impl Actor for Server {
     }
 }
 
-impl Server {
+impl LiveServer {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
-        let live = warp::path("live").and(warp::ws()).map(WsHandler::upgrade);
+        let live = warp::path("live").and(warp::ws()).map(LiveHandler::upgrade);
         let assets = warp::path::tail().map(move |tail| asset_handler.handle(tail));
         let routes = index.or(live).or(assets);
         warp::serve(routes).run(self.addr).await;
@@ -73,12 +73,13 @@ impl AssetHandler {
     }
 }
 
-struct WsHandler {
+/// WebSocket handler for `LiveServer`.
+pub struct LiveHandler {
     websocket: WebSocket,
 }
 
-impl WsHandler {
-    fn upgrade(ws: Ws) -> impl Reply {
+impl LiveHandler {
+    pub fn upgrade(ws: Ws) -> impl Reply {
         ws.on_upgrade(Self::handle)
     }
 

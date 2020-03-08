@@ -6,7 +6,7 @@ mod control;
 mod network;
 mod types;
 
-use actors::{Database, Server};
+use actors::{Database, LiveServer};
 use anyhow::Error;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Error> {
 
     log::debug!("Starting HTTP server...");
     let addr = ([127, 0, 0, 1], 3030).into();
-    let server = Server::new(addr);
+    let server = LiveServer::new(addr);
     let mut server_handle = meio::spawn(server);
 
     log::info!("Press Ctrl-C to terminate.");
