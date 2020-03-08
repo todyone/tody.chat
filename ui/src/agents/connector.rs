@@ -125,7 +125,12 @@ impl Connector {
             .as_string()
             .ok_or(ConnectorError::NoString)?
             .parse()?;
-        url.set_scheme("ws");
+        let scheme = if url.scheme().ends_with("s") {
+            "wss"
+        } else {
+            "ws"
+        };
+        url.set_scheme(scheme);
         url.set_path("/live");
         let url = url.to_string();
         log::info!("Location: {}", url);
