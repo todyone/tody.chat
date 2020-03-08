@@ -103,7 +103,8 @@ impl Agent for Connector {
     fn connected(&mut self, id: HandlerId) {
         self.subscribers.insert(id);
         self.send_status_to(id);
-        if !self.subscribers.is_empty() {
+        // Connect if first consumer appeared
+        if (!self.subscribers.is_empty() && self.ws.is_none()) {
             if let Err(err) = self.connect() {
                 log::error!("Can't connect to a server by WebSocket: {}", err);
             }
@@ -112,6 +113,10 @@ impl Agent for Connector {
 
     fn disconnected(&mut self, id: HandlerId) {
         self.subscribers.remove(&id);
+        // Disconnect if there is no any listener remained
+        if self.subscribers.is_empty() {
+            self.ws.take();
+        }
     }
 }
 
