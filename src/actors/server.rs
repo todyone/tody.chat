@@ -29,7 +29,14 @@ impl Server {
 impl Actor for Server {
     type Message = ();
 
-    async fn routine(&mut self, _ctx: Context<Self>) -> Result<(), Error> {
+    async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
+        self.run(ctx).await?;
+        Ok(())
+    }
+}
+
+impl Server {
+    async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
         let live = warp::path("live").and(warp::ws()).map(WsHandler::upgrade);

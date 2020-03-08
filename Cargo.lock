@@ -468,8 +468,14 @@ dependencies = [
  "log 0.4.8",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.2.0",
 ]
+
+[[package]]
+name = "half"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f36b5f248235f45773d4944f555f83ea61fe07b18b561ccf99d7483d7381e54d"
 
 [[package]]
 name = "headers"
@@ -1265,6 +1271,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_cbor"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e18acfa2f90e8b735b2836ab8d538de304cbb6729a7360729ea5a895d15a622"
+dependencies = [
+ "half",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1480,6 +1496,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bytes",
  "clap",
  "env_logger",
  "failure",
@@ -1491,10 +1508,13 @@ dependencies = [
  "mime_guess 2.0.3",
  "protocol",
  "rusqlite",
+ "serde",
+ "serde_cbor",
  "serde_json",
  "tar",
  "thiserror",
  "tokio",
+ "tokio-util 0.3.0",
  "warp",
 ]
 
@@ -1551,6 +1571,20 @@ name = "tokio-util"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "571da51182ec208780505a32528fc5512a8fe1443ab960b3f2f3ef093cd16930"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "log 0.4.8",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-util"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af67cdce2b40f8dffb0ee04c853a24217b5d0d3e358f0f5ccc0b5332174ed9a8"
 dependencies = [
  "bytes",
  "futures-core",

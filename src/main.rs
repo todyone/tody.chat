@@ -2,6 +2,8 @@
 
 mod actors;
 mod assets;
+mod control;
+mod network;
 mod types;
 
 use actors::{Database, Server};

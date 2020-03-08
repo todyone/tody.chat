@@ -31,7 +31,7 @@ impl Actor for Database {
     type Message = Msg;
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
-        self.routine_impl(ctx).await
+        self.run(ctx).await
     }
 }
 
@@ -48,7 +48,7 @@ impl Database {
     ///   = help: use the `|| { ... }` closure form instead
     ///   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
     /// ```
-    async fn routine_impl(&mut self, mut ctx: Context<Self>) -> Result<(), Error> {
+    async fn run(&mut self, mut ctx: Context<Self>) -> Result<(), Error> {
         self.open_database().await?;
         self.create_tables().await?;
         loop {
