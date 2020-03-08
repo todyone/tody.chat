@@ -1,2 +1,2 @@
 mod connector;
-pub use connector::{Connector, Notification, Status};
+pub use connector::{Action, Connector, Notification, Status};

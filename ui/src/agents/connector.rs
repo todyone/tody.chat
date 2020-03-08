@@ -1,5 +1,5 @@
 use anyhow::Error;
-use protocol::ServerToClient;
+use protocol::{ClientToServer, Credentials, ServerToClient};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -25,7 +25,7 @@ pub enum Status {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum Action {
-    SetCredentials,
+    SetCredentials(Credentials),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -36,10 +36,11 @@ pub enum Notification {
 /// Keeps connection to WebSockets automatically.
 pub struct Connector {
     status: Status,
-    ws: WebSocketService,
+    service: WebSocketService,
     link: AgentLink<Connector>,
     subscribers: HashSet<HandlerId>,
-    task: Option<WebSocketTask>,
+    ws: Option<WebSocketTask>,
+    credentials: Option<Credentials>,
 }
 
 #[derive(Debug)]
@@ -59,10 +60,11 @@ impl Agent for Connector {
         // link.send_message(Msg::Connect);
         Self {
             status: Status::Disconnected,
-            ws: WebSocketService::new(),
+            service: WebSocketService::new(),
             link,
             subscribers: HashSet::new(),
-            task: None,
+            ws: None,
+            credentials: None,
         }
     }
 
@@ -77,6 +79,11 @@ impl Agent for Connector {
                     }
                     WebSocketStatus::Closed | WebSocketStatus::Error => {
                         self.set_status(Status::Disconnected);
+                        if let Some(creds) = self.credentials.as_ref() {
+                            let msg = ClientToServer::Login(creds.to_owned());
+                            // TODO: Use `Result` instead of `unwrap`
+                            self.ws.as_mut().unwrap().send(Json(&msg));
+                        }
                         // TODO: Schedule reconnection...
                     }
                 }
@@ -86,7 +93,10 @@ impl Agent for Connector {
 
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
         match msg {
-            Action::SetCredentials => {}
+            Action::SetCredentials(value) => {
+                self.credentials = Some(value);
+                self.set_status(Status::LoggedIn);
+            }
         }
     }
 
@@ -131,11 +141,11 @@ impl Connector {
         log::info!("Location: {}", url);
         let callback = self.link.callback(|Json(data)| Msg::WsReady(data));
         let notification = self.link.callback(Msg::WsStatus);
-        let task = self
-            .ws
+        let ws = self
+            .service
             .connect(&url, callback, notification)
             .expect("Can't use WebSockets");
-        self.task = Some(task);
+        self.ws = Some(ws);
         Ok(())
     }
 
