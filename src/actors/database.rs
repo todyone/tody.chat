@@ -2,8 +2,8 @@
 // when SQLite crates will support that.
 
 use crate::types::{Password, Username};
+use anyhow::Error;
 use async_trait::async_trait;
-use failure::Error;
 use futures::{select, StreamExt};
 use meio::{Actor, Context};
 use rusqlite::{params, Connection};

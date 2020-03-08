@@ -25,6 +25,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
+
+[[package]]
 name = "arc-swap"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -685,13 +691,14 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 
 [[package]]
 name = "meio"
-version = "0.3.0"
-source = "git+ssh://git@github.com/DenisKolodin/meio#7d86f5f71480b67780e7b5360dd69104cd4090fd"
+version = "0.4.0"
+source = "git+ssh://git@github.com/DenisKolodin/meio#e5a30a4d53f707e3994158f0dc1ebeb09f6012a2"
 dependencies = [
+ "anyhow",
  "async-trait",
- "failure",
  "futures",
  "log 0.4.8",
+ "thiserror",
  "tokio",
  "uuid",
 ]
@@ -1407,6 +1414,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "thiserror"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee14bf8e6767ab4c687c9e8bc003879e042a96fd67a3ba5934eadb6536bef4db"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7b51e1fbc44b5a0840be594fbc0f960be09050f2617e61e6aa43bef97cd3ef4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "thread_local"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1430,6 +1457,7 @@ dependencies = [
 name = "tody-chat"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "clap",
  "env_logger",
@@ -1442,6 +1470,7 @@ dependencies = [
  "mime_guess 2.0.3",
  "rusqlite",
  "tar",
+ "thiserror",
  "tokio",
  "warp",
 ]

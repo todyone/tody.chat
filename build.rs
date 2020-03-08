@@ -47,9 +47,7 @@ impl RunIt for Command {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    Command::new("make.sh")
-        .run_it("Can't build UI")
-        .await?;
+    Command::new("make.sh").run_it("Can't build UI").await?;
 
     let tar = "ui.tar.gz";
     let out_path = PathBuf::from(env::var("OUT_DIR")?);

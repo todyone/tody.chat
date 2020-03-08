@@ -5,7 +5,7 @@ mod assets;
 mod types;
 
 use actors::{Database, Server};
-use failure::Error;
+use anyhow::Error;
 use std::time::Duration;
 use tokio::time::timeout;
 

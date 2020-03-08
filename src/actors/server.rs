@@ -1,6 +1,6 @@
 use crate::assets::{read_assets, Assets};
+use anyhow::Error;
 use async_trait::async_trait;
-use failure::Error;
 use futures::StreamExt;
 use headers::{ContentType, HeaderMapExt};
 use meio::{Actor, Context};
