@@ -1,4 +1,5 @@
 use anyhow::Error;
+use protocol::ServerToClient;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -6,12 +7,6 @@ use url::Url;
 use yew::format::Json;
 use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
 use yew::worker::*;
-
-// TODO: Move to a `protocol` crate
-#[derive(Deserialize, Debug)]
-pub struct WsResponse {
-    value: u32,
-}
 
 #[derive(Error, Debug)]
 enum ConnectorError {
@@ -49,7 +44,7 @@ pub struct Connector {
 
 #[derive(Debug)]
 pub enum Msg {
-    WsReady(Result<WsResponse, Error>),
+    WsReady(Result<ServerToClient, Error>),
     WsStatus(WebSocketStatus),
 }
 
