@@ -74,19 +74,19 @@ impl AssetHandler {
 }
 
 /// WebSocket handler for `LiveServer`.
-pub struct LiveHandler {
+struct LiveHandler {
     websocket: WebSocket,
 }
 
 impl LiveHandler {
-    pub fn upgrade(ws: Ws) -> impl Reply {
+    fn upgrade(ws: Ws) -> impl Reply {
         ws.on_upgrade(Self::handle)
     }
 
     async fn handle(websocket: WebSocket) {
         let this = Self { websocket };
         if let Err(err) = this.routine().await {
-            log::error!("WebSocket error: {}", err);
+            log::error!("LiveHandler error: {}", err);
         }
     }
 

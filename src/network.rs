@@ -1,4 +1,3 @@
-use anyhow::Error;
 use bytes::{Buf, BufMut, BytesMut};
 use futures::stream::{Fuse, StreamExt};
 use serde::de::DeserializeOwned;
@@ -55,16 +54,22 @@ impl<E, D> ProtocolCodec<E, D> {
 }
 
 #[derive(Error, Debug)]
-enum CodecError {
+pub enum CodecError {
     #[error("Message too big: {size}. Max: {max}.")]
     MessageTooBig { size: usize, max: usize },
+    #[error("io error {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("serialization error {0}")]
+    SerializationError(#[from] serde_cbor::error::Error),
+    #[error("num conversion error {0}")]
+    Conversion(#[from] std::num::TryFromIntError),
 }
 
 impl<E, D> Encoder<E> for ProtocolCodec<E, D>
 where
     E: Serialize,
 {
-    type Error = Error;
+    type Error = CodecError;
 
     fn encode(&mut self, item: E, bytes: &mut BytesMut) -> Result<(), Self::Error> {
         let data = serde_cbor::to_vec(&item)?;
@@ -80,7 +85,7 @@ where
     D: DeserializeOwned,
 {
     type Item = D;
-    type Error = Error;
+    type Error = CodecError;
 
     fn decode(&mut self, bytes: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if self.size == 0 {

@@ -1,5 +1,5 @@
-mod controller;
-pub use controller::Controller;
+mod ctrl_server;
+pub use ctrl_server::CtrlServer;
 
 mod database;
 pub use database::Database;
