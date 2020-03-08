@@ -1,18 +1,16 @@
 use crate::agents::{Connector, Notification};
 use yew::prelude::*;
 
-pub struct Splash {
-}
+pub struct Splash {}
 
-pub enum Msg {
-}
+pub enum Msg {}
 
 impl Component for Splash {
     type Message = Msg;
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { }
+        Self {}
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {
