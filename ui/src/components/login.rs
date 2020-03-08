@@ -10,6 +10,8 @@ pub struct Login {
 }
 
 pub enum Msg {
+    UpdateUsername(String),
+    UpdatePassword(String),
     SendCredentials,
     Notification(Notification),
 }
@@ -31,6 +33,12 @@ impl Component for Login {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
+            Msg::UpdateUsername(username) => {
+                self.username = username;
+            }
+            Msg::UpdatePassword(password) => {
+                self.password = password;
+            }
             Msg::SendCredentials => {
                 let creds = Credentials {
                     username: self.username.clone(),
@@ -48,12 +56,17 @@ impl Component for Login {
         html! {
             <div>
                 <div>
-                    <label>{ "Login" }</label>
-                    <input value="" placeholder="Login" />
+                    <label>{ "Username" }</label>
+                    <input value=self.username
+                           placeholder="Username"
+                           oninput=self.link.callback(|e: InputData| Msg::UpdateUsername(e.value)) />
                 </div>
                 <div>
                     <label>{ "Password" }</label>
-                    <input value="" placeholder="Password" />
+                    <input type="password"
+                           value=self.password
+                           placeholder="Password"
+                           oninput=self.link.callback(|e: InputData| Msg::UpdatePassword(e.value)) />
                 </div>
                 <p onclick=self.link.callback(|_| Msg::SendCredentials)>{ "Login" }</p>
             </div>
