@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use headers::{ContentType, HeaderMapExt};
 use meio::{Actor, Context};
+use protocol::ClientToServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place as wait;
@@ -82,8 +83,11 @@ impl WsHandler {
     }
 
     async fn routine(self) -> Result<(), Error> {
-        let (tx, rx) = self.websocket.split();
-        rx.forward(tx).await?;
+        let (_tx, mut rx) = self.websocket.split();
+        while let Some(msg) = rx.next().await.transpose()? {
+            let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
+            log::trace!("Received: {:?}", request);
+        }
         Ok(())
     }
 }

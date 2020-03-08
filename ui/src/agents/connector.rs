@@ -72,30 +72,25 @@ impl Agent for Connector {
         log::info!("Agent message: {:?}", msg);
         match msg {
             Msg::WsReady(_res) => {}
-            Msg::WsStatus(status) => {
-                match status {
-                    WebSocketStatus::Opened => {
-                        self.set_status(Status::Connected);
-                    }
-                    WebSocketStatus::Closed | WebSocketStatus::Error => {
-                        self.set_status(Status::Disconnected);
-                        if let Some(creds) = self.credentials.as_ref() {
-                            let msg = ClientToServer::Login(creds.to_owned());
-                            // TODO: Use `Result` instead of `unwrap`
-                            self.ws.as_mut().unwrap().send(Json(&msg));
-                        }
-                        // TODO: Schedule reconnection...
-                    }
+            Msg::WsStatus(status) => match status {
+                WebSocketStatus::Opened => {
+                    self.set_status(Status::Connected);
                 }
-            }
+                WebSocketStatus::Closed | WebSocketStatus::Error => {
+                    self.set_status(Status::Disconnected);
+                }
+            },
         }
     }
 
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
+        log::trace!("Connector msg: {:?}", msg);
         match msg {
             Action::SetCredentials(value) => {
                 self.credentials = Some(value);
-                self.set_status(Status::LoggedIn);
+                self.login();
+                // TODO: Set it on authorized
+                //self.set_status(Status::LoggedIn);
             }
         }
     }
@@ -104,7 +99,7 @@ impl Agent for Connector {
         self.subscribers.insert(id);
         self.send_status_to(id);
         // Connect if first consumer appeared
-        if (!self.subscribers.is_empty() && self.ws.is_none()) {
+        if !self.subscribers.is_empty() && self.ws.is_none() {
             if let Err(err) = self.connect() {
                 log::error!("Can't connect to a server by WebSocket: {}", err);
             }
@@ -121,6 +116,15 @@ impl Agent for Connector {
 }
 
 impl Connector {
+    fn login(&mut self) {
+        if let Some(creds) = self.credentials.as_ref() {
+            let msg = ClientToServer::Login(creds.to_owned());
+            // TODO: Use `Result` instead of `unwrap`
+            self.ws.as_mut().unwrap().send(Json(&msg));
+        }
+        // TODO: Schedule reconnection...
+    }
+
     fn set_status(&mut self, status: Status) {
         self.status = status;
         let notification = Notification::StatusChanged(self.status.clone());
