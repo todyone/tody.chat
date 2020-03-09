@@ -8,7 +8,13 @@ use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
 pub struct CtrlServer {
-    address: SocketAddr,
+    addr: SocketAddr,
+}
+
+impl CtrlServer {
+    pub fn new(addr: SocketAddr) -> Self {
+        Self { addr }
+    }
 }
 
 #[async_trait]
@@ -23,7 +29,7 @@ impl Actor for CtrlServer {
 
 impl CtrlServer {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
-        let mut listener = TcpListener::bind(&self.address).await?;
+        let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();
         while let Some(stream) = incoming.next().await {}
         Ok(())
