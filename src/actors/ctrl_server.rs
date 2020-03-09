@@ -22,6 +22,7 @@ impl Actor for CtrlServer {
     type Message = ();
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
+        log::debug!("CtrlServer started");
         self.run(ctx).await?;
         Ok(())
     }
@@ -31,7 +32,9 @@ impl CtrlServer {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();
-        while let Some(stream) = incoming.next().await {}
+        while let Some(stream) = incoming.next().await.transpose()? {
+            CtrlHandler::upgrade(stream);
+        }
         Ok(())
     }
 }
@@ -54,6 +57,7 @@ impl CtrlHandler {
     }
 
     async fn routine(mut self) -> Result<(), Error> {
+        log::debug!("CtrlHandler started");
         while let Some(msg) = self.connection.next().await.transpose()? {
             log::trace!("Ctrl message: {:?}", msg);
             match msg {

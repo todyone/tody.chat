@@ -1,6 +1,5 @@
 use crate::network::{wrap, CodecError, NetworkConnection, ProtocolCodec};
 use crate::types::{Password, Username};
-use anyhow::Error;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
