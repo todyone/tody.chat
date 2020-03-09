@@ -2,8 +2,10 @@ use crate::network::{wrap, CodecError, NetworkConnection, ProtocolCodec};
 use crate::types::{Password, Username};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use thiserror::Error;
 use tokio::net::TcpStream;
+use tokio::time::timeout;
 
 pub type ClientProtocol = ProtocolCodec<ClientToController, ControllerToClient>;
 
@@ -36,7 +38,11 @@ pub enum ControllerError {
     IoError(#[from] std::io::Error),
     #[error("codec error {0}")]
     CodecError(#[from] CodecError),
+    #[error("timeout {0}")]
+    Timeout(#[from] tokio::time::Elapsed),
 }
+
+const WAIT_TIMEOUT_SEC: u64 = 10;
 
 pub struct Controller {
     connection: NetworkConnection<ClientProtocol>,
@@ -49,6 +55,20 @@ impl Controller {
         Ok(Self { connection })
     }
 
+    async fn interact(
+        &mut self,
+        msg: ClientToController,
+    ) -> Result<ControllerToClient, ControllerError> {
+        self.connection.send(msg).await?;
+        timeout(
+            Duration::from_secs(WAIT_TIMEOUT_SEC),
+            self.connection.next(),
+        )
+        .await?
+        .transpose()?
+        .ok_or(ControllerError::NoResponse)
+    }
+
     pub async fn create_user(
         &mut self,
         username: Username,
@@ -56,12 +76,9 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         let expected = username.clone();
         let msg = ClientToController::CreateUser { username };
-        self.connection.send(msg).await?;
-        let resp = self.connection.next().await.transpose()?;
-        match resp {
-            Some(ControllerToClient::UserCreated { username }) if username == expected => Ok(()),
-            Some(other) => Err(ControllerError::UnexpectedResponse(other)),
-            None => Err(ControllerError::NoResponse),
+        match self.interact(msg).await? {
+            ControllerToClient::UserCreated { username } if username == expected => Ok(()),
+            other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }
 }
