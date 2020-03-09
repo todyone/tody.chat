@@ -1,8 +1,8 @@
-use crate::control::{ClientToController, ControllerProtocol};
+use crate::control::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{select, StreamExt};
+use futures::{select, SinkExt, StreamExt};
 use meio::{Actor, Context};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
@@ -56,13 +56,25 @@ impl CtrlHandler {
         }
     }
 
+    async fn send(&mut self, response: ControllerToClient) -> Result<(), Error> {
+        self.connection.send(response).await.map_err(Error::from)
+    }
+
     async fn routine(mut self) -> Result<(), Error> {
         log::debug!("CtrlHandler started");
         while let Some(msg) = self.connection.next().await.transpose()? {
             log::trace!("Ctrl message: {:?}", msg);
             match msg {
-                ClientToController::CreateUser { .. } => {}
-                ClientToController::SetPassword { .. } => {}
+                ClientToController::CreateUser { username } => {
+                    log::debug!("User created: {}", username);
+                    let response = ControllerToClient::UserCreated { username };
+                    self.send(response).await?;
+                }
+                ClientToController::SetPassword { username, password } => {
+                    log::debug!("Password updated: {}", username);
+                    let response = ControllerToClient::PasswordSet { username };
+                    self.send(response).await?;
+                }
             }
         }
         Ok(())

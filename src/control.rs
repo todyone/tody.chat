@@ -69,15 +69,24 @@ impl Controller {
         .ok_or(ControllerError::NoResponse)
     }
 
-    pub async fn create_user(
+    pub async fn create_user(&mut self, username: Username) -> Result<(), ControllerError> {
+        let expected = username.clone();
+        let msg = ClientToController::CreateUser { username };
+        match self.interact(msg).await? {
+            ControllerToClient::UserCreated { username } if username == expected => Ok(()),
+            other => Err(ControllerError::UnexpectedResponse(other)),
+        }
+    }
+
+    pub async fn set_password(
         &mut self,
         username: Username,
         password: Password,
     ) -> Result<(), ControllerError> {
         let expected = username.clone();
-        let msg = ClientToController::CreateUser { username };
+        let msg = ClientToController::SetPassword { username, password };
         match self.interact(msg).await? {
-            ControllerToClient::UserCreated { username } if username == expected => Ok(()),
+            ControllerToClient::PasswordSet { username } if username == expected => Ok(()),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }

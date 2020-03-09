@@ -15,10 +15,9 @@ impl Client {
         let mut controller = Controller::connect("127.0.0.1:3020").await?;
         match self.opts.subcmd {
             Some(SubCommand::User(user_command)) => match user_command.subcmd {
-                UserSubCommand::Create(user_create_command) => {
-                    controller
-                        .create_user(user_create_command.username, user_create_command.password)
-                        .await?;
+                UserSubCommand::Create(cmd) => {
+                    controller.create_user(cmd.username.clone()).await?;
+                    controller.set_password(cmd.username, cmd.password).await?;
                 }
             },
             _ => {
