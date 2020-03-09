@@ -25,7 +25,7 @@ impl Server {
 
         log::debug!("Starting Ctrl server...");
         let addr = ([127, 0, 0, 1], 3020).into();
-        let ctrl_server = CtrlServer::new(addr);
+        let ctrl_server = CtrlServer::new(addr, database_handle.clone());
         let mut ctrl_server_handle = meio::spawn(ctrl_server);
 
         log::debug!("Starting Live server...");

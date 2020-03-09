@@ -1,19 +1,21 @@
+use crate::actors::Database;
 use crate::control::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, SinkExt, StreamExt};
-use meio::{Actor, Context};
+use meio::{Actor, Address, Context};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
 pub struct CtrlServer {
     addr: SocketAddr,
+    database: Address<Database>,
 }
 
 impl CtrlServer {
-    pub fn new(addr: SocketAddr) -> Self {
-        Self { addr }
+    pub fn new(addr: SocketAddr, database: Address<Database>) -> Self {
+        Self { addr, database }
     }
 }
 
