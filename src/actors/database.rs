@@ -5,7 +5,7 @@ use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, StreamExt};
-use meio::{Actor, Context};
+use meio::{Actor, Context, Wrapper};
 use rusqlite::{params, Connection};
 use tokio::task::block_in_place as wait;
 
@@ -29,6 +29,7 @@ pub enum Msg {
 #[async_trait]
 impl Actor for Database {
     type Message = Msg;
+    type Interface = Wrapper<Self>;
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         self.run(ctx).await

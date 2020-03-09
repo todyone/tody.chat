@@ -4,7 +4,7 @@ use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, SinkExt, StreamExt};
-use meio::{Actor, Address, Context};
+use meio::{Actor, Address, Context, Wrapper};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -22,6 +22,7 @@ impl CtrlServer {
 #[async_trait]
 impl Actor for CtrlServer {
     type Message = ();
+    type Interface = Wrapper<Self>;
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         log::debug!("CtrlServer started");

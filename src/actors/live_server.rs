@@ -3,7 +3,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use futures::StreamExt;
 use headers::{ContentType, HeaderMapExt};
-use meio::{Actor, Context};
+use meio::{Actor, Context, Wrapper};
 use protocol::ClientToServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -28,6 +28,7 @@ impl LiveServer {
 #[async_trait]
 impl Actor for LiveServer {
     type Message = ();
+    type Interface = Wrapper<Self>;
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         self.run(ctx).await?;
