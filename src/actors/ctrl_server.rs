@@ -40,7 +40,7 @@ impl CtrlServer {
         let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();
         while let Some(stream) = incoming.next().await.transpose()? {
-            CtrlHandler::upgrade(stream);
+            CtrlHandler::upgrade(stream, self.database.clone());
         }
         Ok(())
     }
@@ -48,16 +48,20 @@ impl CtrlServer {
 
 struct CtrlHandler {
     connection: NetworkConnection<ControllerProtocol>,
+    database: DatabaseWrapper,
 }
 
 impl CtrlHandler {
-    fn upgrade(stream: TcpStream) {
-        tokio::spawn(Self::handle(stream));
+    fn upgrade(stream: TcpStream, database: DatabaseWrapper) {
+        tokio::spawn(Self::handle(stream, database));
     }
 
-    async fn handle(stream: TcpStream) {
+    async fn handle(stream: TcpStream, database: DatabaseWrapper) {
         let connection = wrap(stream);
-        let this = Self { connection };
+        let this = Self {
+            connection,
+            database,
+        };
         if let Err(err) = this.routine().await {
             log::error!("CtrlHandler error: {}", err);
         }
@@ -74,7 +78,16 @@ impl CtrlHandler {
             match msg {
                 ClientToController::CreateUser { username } => {
                     log::debug!("User created: {}", username);
-                    let response = ControllerToClient::UserCreated { username };
+                    let result = self.database.create_user(username.clone()).await;
+                    let response = {
+                        match result {
+                            Ok(_) => ControllerToClient::UserCreated { username },
+                            Err(err) => {
+                                log::error!("Can't create user: {}", err);
+                                todo!();
+                            }
+                        }
+                    };
                     self.send(response).await?;
                 }
                 ClientToController::SetPassword { username, password } => {

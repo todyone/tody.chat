@@ -1,6 +1,7 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
+use crate::db::Dba;
 use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -26,12 +27,12 @@ impl DatabaseWrapper {
 }
 
 pub struct Database {
-    conn: Option<Connection>,
+    dba: Option<Dba>,
 }
 
 impl Database {
     pub fn new() -> Self {
-        Self { conn: None }
+        Self { dba: None }
     }
 }
 
@@ -73,8 +74,9 @@ impl Database {
     ///   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
     /// ```
     async fn run(&mut self, mut ctx: Context<Self>) -> Result<(), Error> {
-        self.open_database().await?;
-        self.create_tables().await?;
+        let dba = Dba::open()?;
+        self.dba = Some(dba);
+        wait(|| self.dba().initialize())?;
         loop {
             select! {
                 msg = ctx.rx.next() => {
@@ -92,7 +94,9 @@ impl Database {
 
     async fn process_message(&mut self, msg: Msg) -> Result<(), Error> {
         match msg {
-            Msg::CreateUser { .. } => {}
+            Msg::CreateUser { username } => {
+                wait(|| self.dba().create_user(username))?;
+            }
             Msg::SetPassword { .. } => {}
         }
         Ok(())
@@ -101,35 +105,7 @@ impl Database {
 
 /// Database routines.
 impl Database {
-    /// Just unwraps a reference to a `Connection`.
-    fn db(&mut self) -> &mut Connection {
-        self.conn.as_mut().expect("Database connection lost")
-    }
-
-    async fn open_database(&mut self) -> Result<(), Error> {
-        log::debug!("Connecting to a database...");
-        let conn = wait(Connection::open_in_memory)?;
-        self.conn = Some(conn);
-        Ok(())
-    }
-
-    async fn execute(&mut self, query: &str) -> Result<(), Error> {
-        log::trace!("Executing query:\n{}", query);
-        wait(|| self.db().execute(query, params![]))
-            .map(drop)
-            .map_err(Error::from)
-    }
-
-    async fn create_tables(&mut self) -> Result<(), Error> {
-        log::debug!("Creating tables...");
-        self.execute(CREATE_PERSON_TABLE).await?;
-        Ok(())
+    fn dba(&mut self) -> &mut Dba {
+        self.dba.as_mut().expect("DBA lost")
     }
 }
-
-const CREATE_PERSON_TABLE: &str = "CREATE TABLE users (
-    id              INTEGER PRIMARY KEY,
-    name            TEXT NOT NULL,
-    time_created    TEXT NOT NULL,
-    data            BLOB
-)";

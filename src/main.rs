@@ -4,6 +4,7 @@ mod actors;
 mod assets;
 mod client;
 mod control;
+mod db;
 mod network;
 mod opts;
 mod server;
