@@ -5,9 +5,11 @@ use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, StreamExt};
-use meio::{Actor, Context, Wrapper};
+use meio::{wrapper, Actor, Address, Context, Wrapper};
 use rusqlite::{params, Connection};
 use tokio::task::block_in_place as wait;
+
+wrapper!(DatabaseWrapper for Database);
 
 pub struct Database {
     conn: Option<Connection>,
@@ -22,6 +24,9 @@ impl Database {
 pub enum Msg {
     CreateUser {
         username: Username,
+    },
+    SetPassword {
+        username: Username,
         password: Password,
     },
 }
@@ -29,7 +34,7 @@ pub enum Msg {
 #[async_trait]
 impl Actor for Database {
     type Message = Msg;
-    type Interface = Wrapper<Self>;
+    type Interface = DatabaseWrapper;
 
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         self.run(ctx).await
@@ -69,9 +74,8 @@ impl Database {
 
     async fn process_message(&mut self, msg: Msg) -> Result<(), Error> {
         match msg {
-            Msg::CreateUser { .. } => {
-                // TODO: Implement creating user activity
-            }
+            Msg::CreateUser { .. } => {}
+            Msg::SetPassword { .. } => {}
         }
         Ok(())
     }
