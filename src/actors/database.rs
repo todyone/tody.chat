@@ -11,6 +11,20 @@ use tokio::task::block_in_place as wait;
 
 wrapper!(DatabaseWrapper for Database);
 
+impl DatabaseWrapper {
+    pub async fn create_user(&mut self, username: Username) -> Result<(), Error> {
+        self.send(Msg::CreateUser { username }).await
+    }
+
+    pub async fn set_password(
+        &mut self,
+        username: Username,
+        password: Password,
+    ) -> Result<(), Error> {
+        self.send(Msg::SetPassword { username, password }).await
+    }
+}
+
 pub struct Database {
     conn: Option<Connection>,
 }
@@ -99,21 +113,21 @@ impl Database {
         Ok(())
     }
 
-    async fn create_tables(&mut self) -> Result<(), Error> {
-        log::debug!("Creating tables...");
-        self.execute(CREATE_PERSON_TABLE).await?;
-        Ok(())
-    }
-
     async fn execute(&mut self, query: &str) -> Result<(), Error> {
         log::trace!("Executing query:\n{}", query);
         wait(|| self.db().execute(query, params![]))
             .map(drop)
             .map_err(Error::from)
     }
+
+    async fn create_tables(&mut self) -> Result<(), Error> {
+        log::debug!("Creating tables...");
+        self.execute(CREATE_PERSON_TABLE).await?;
+        Ok(())
+    }
 }
 
-const CREATE_PERSON_TABLE: &str = "CREATE TABLE person (
+const CREATE_PERSON_TABLE: &str = "CREATE TABLE users (
     id              INTEGER PRIMARY KEY,
     name            TEXT NOT NULL,
     time_created    TEXT NOT NULL,
