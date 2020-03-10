@@ -1,4 +1,4 @@
-use crate::actors::Database;
+use crate::actors::DatabaseWrapper;
 use crate::control::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
@@ -10,11 +10,11 @@ use tokio::net::{TcpListener, TcpStream};
 
 pub struct CtrlServer {
     addr: SocketAddr,
-    database: Address<Database>,
+    database: DatabaseWrapper,
 }
 
 impl CtrlServer {
-    pub fn new(addr: SocketAddr, database: Address<Database>) -> Self {
+    pub fn new(addr: SocketAddr, database: DatabaseWrapper) -> Self {
         Self { addr, database }
     }
 }
