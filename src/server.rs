@@ -1,10 +1,9 @@
 use crate::actors::{CtrlServer, Database, LiveServer};
 use crate::opts::Opts;
 use anyhow::Error;
+use meio::{Actor, Wrapper};
 use std::time::Duration;
 use tokio::time::timeout;
-
-const TERMINATION_TIMEOUT: u64 = 5;
 
 pub struct Server {
     opts: Opts,
@@ -36,38 +35,9 @@ impl Server {
         log::info!("Press Ctrl-C to terminate.");
         tokio::signal::ctrl_c().await?;
 
-        log::debug!("Terminating Live server...");
-        live_server_handle.terminate();
-        if let Err(err) = timeout(
-            Duration::from_secs(TERMINATION_TIMEOUT),
-            live_server_handle.join(),
-        )
-        .await
-        {
-            log::error!("Can't terminate Live server: {}", err);
-        }
-
-        log::debug!("Terminating Ctrl server...");
-        ctrl_server_handle.terminate();
-        if let Err(err) = timeout(
-            Duration::from_secs(TERMINATION_TIMEOUT),
-            ctrl_server_handle.join(),
-        )
-        .await
-        {
-            log::error!("Can't terminate Ctrl server: {}", err);
-        }
-
-        log::debug!("Terminating the database actor...");
-        database_handle.terminate();
-        if let Err(err) = timeout(
-            Duration::from_secs(TERMINATION_TIMEOUT),
-            database_handle.join(),
-        )
-        .await
-        {
-            log::error!("Can't terminate the database actor: {}", err);
-        }
+        live_server_handle.terminate_with_timeout().await;
+        ctrl_server_handle.terminate_with_timeout().await;
+        database_handle.terminate_with_timeout().await;
 
         log::info!("Thank you for using Tody 🐦 App!");
         Ok(())

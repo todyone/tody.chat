@@ -24,6 +24,10 @@ impl Actor for CtrlServer {
     type Message = ();
     type Interface = Wrapper<Self>;
 
+    fn generic_name() -> &'static str {
+        "CtrlServer"
+    }
+
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         log::debug!("CtrlServer started");
         self.run(ctx).await?;

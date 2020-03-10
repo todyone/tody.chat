@@ -36,6 +36,10 @@ impl Actor for Database {
     type Message = Msg;
     type Interface = DatabaseWrapper;
 
+    fn generic_name() -> &'static str {
+        "Database"
+    }
+
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         self.run(ctx).await
     }

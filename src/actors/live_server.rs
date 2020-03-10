@@ -30,6 +30,10 @@ impl Actor for LiveServer {
     type Message = ();
     type Interface = Wrapper<Self>;
 
+    fn generic_name() -> &'static str {
+        "LiveServer"
+    }
+
     async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
         self.run(ctx).await?;
         Ok(())
