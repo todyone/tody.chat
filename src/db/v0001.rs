@@ -1,5 +1,6 @@
 use crate::types::{Id, Password, Username};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Row};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 pub struct User {
@@ -86,12 +87,25 @@ impl Dba {
         Ok(())
     }
 
-    pub fn get_user(&mut self, username: Username) -> Result<(), DbaError> {
+    pub fn get_user(&mut self, username: Username) -> Result<User, DbaError> {
         log::trace!("Getting user: {}", username);
-        self.conn.execute(
+        let user = self.conn.query_row(
             "SELECT id, username, password, email FROM users WHERE username = ?",
             params![&username],
+            |row| User::try_from(row),
         )?;
-        Ok(())
+        Ok(user)
+    }
+}
+
+impl TryFrom<&Row<'_>> for User {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: row.get(0)?,
+            username: row.get(1)?,
+            password: row.get(2)?,
+        })
     }
 }

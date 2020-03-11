@@ -29,7 +29,7 @@ impl Server {
 
         log::debug!("Starting Live server...");
         let addr = ([127, 0, 0, 1], 3030).into();
-        let live_server = LiveServer::new(addr);
+        let live_server = LiveServer::new(addr, database_handle.clone());
         let mut live_server_handle = meio::spawn(live_server);
 
         log::info!("Press Ctrl-C to terminate.");

@@ -1,5 +1,5 @@
 // TODO: Use wrapper over primitives
 
-pub type Id = u64;
+pub type Id = u32;
 pub type Username = String;
 pub type Password = String;

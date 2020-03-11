@@ -1,4 +1,6 @@
+use crate::actors::DatabaseWrapper;
 use crate::assets::{read_assets, Assets};
+use crate::types::Id;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -17,11 +19,12 @@ use warp::{
 
 pub struct LiveServer {
     addr: SocketAddr,
+    database: DatabaseWrapper,
 }
 
 impl LiveServer {
-    pub fn new(addr: SocketAddr) -> Self {
-        Self { addr }
+    pub fn new(addr: SocketAddr, database: DatabaseWrapper) -> Self {
+        Self { addr, database }
     }
 }
 
@@ -44,7 +47,10 @@ impl LiveServer {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
-        let live = warp::path("live").and(warp::ws()).map(LiveHandler::upgrade);
+        let database = self.database.clone();
+        let live = warp::path("live")
+            .and(warp::ws())
+            .map(move |ws| LiveHandler::upgrade(ws, database.clone()));
         let assets = warp::path::tail().map(move |tail| asset_handler.handle(tail));
         let routes = index.or(live).or(assets);
         warp::serve(routes).run(self.addr).await;
@@ -81,15 +87,21 @@ impl AssetHandler {
 /// WebSocket handler for `LiveServer`.
 struct LiveHandler {
     websocket: WebSocket,
+    database: DatabaseWrapper,
+    user_id: Option<Id>,
 }
 
 impl LiveHandler {
-    fn upgrade(ws: Ws) -> impl Reply {
-        ws.on_upgrade(Self::handle)
+    fn upgrade(ws: Ws, database: DatabaseWrapper) -> impl Reply {
+        ws.on_upgrade(|weboscket| Self::handle(weboscket, database))
     }
 
-    async fn handle(websocket: WebSocket) {
-        let this = Self { websocket };
+    async fn handle(websocket: WebSocket, database: DatabaseWrapper) {
+        let this = Self {
+            websocket,
+            database,
+            user_id: None,
+        };
         if let Err(err) = this.routine().await {
             log::error!("LiveHandler error: {}", err);
         }
@@ -100,6 +112,12 @@ impl LiveHandler {
         while let Some(msg) = rx.next().await.transpose()? {
             let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
             log::trace!("Received: {:?}", request);
+            match request {
+                ClientToServer::Login(creds) => {
+                    // TODO: 1. Get user
+                    // TODO: 2. Check password
+                }
+            }
         }
         Ok(())
     }
