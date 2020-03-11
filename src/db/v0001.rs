@@ -69,6 +69,8 @@ impl Dba {
         self.conn.execute(
             "CREATE TABLE members (
                 id INTEGER PRIMARY KEY,
+                channel_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
                 FOREIGN KEY (channel_id)
                     REFERENCES channels (id),
                 FOREIGN KEY (user_id)
