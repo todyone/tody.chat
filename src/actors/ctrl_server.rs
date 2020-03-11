@@ -1,4 +1,4 @@
-use crate::actors::DatabaseWrapper;
+use crate::actors::Database;
 use crate::control::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
@@ -10,12 +10,12 @@ use tokio::net::{TcpListener, TcpStream};
 
 pub struct CtrlServer {
     addr: SocketAddr,
-    database: DatabaseWrapper,
+    db: Database,
 }
 
 impl CtrlServer {
-    pub fn new(addr: SocketAddr, database: DatabaseWrapper) -> Self {
-        Self { addr, database }
+    pub fn new(addr: SocketAddr, db: Database) -> Self {
+        Self { addr, db }
     }
 }
 
@@ -40,7 +40,7 @@ impl CtrlServer {
         let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();
         while let Some(stream) = incoming.next().await.transpose()? {
-            CtrlHandler::upgrade(stream, self.database.clone());
+            CtrlHandler::upgrade(stream, self.db.clone());
         }
         Ok(())
     }
@@ -48,20 +48,17 @@ impl CtrlServer {
 
 struct CtrlHandler {
     connection: NetworkConnection<ControllerProtocol>,
-    database: DatabaseWrapper,
+    db: Database,
 }
 
 impl CtrlHandler {
-    fn upgrade(stream: TcpStream, database: DatabaseWrapper) {
-        tokio::spawn(Self::handle(stream, database));
+    fn upgrade(stream: TcpStream, db: Database) {
+        tokio::spawn(Self::handle(stream, db));
     }
 
-    async fn handle(stream: TcpStream, database: DatabaseWrapper) {
+    async fn handle(stream: TcpStream, db: Database) {
         let connection = wrap(stream);
-        let this = Self {
-            connection,
-            database,
-        };
+        let this = Self { connection, db };
         if let Err(err) = this.routine().await {
             log::error!("CtrlHandler error: {}", err);
         }
@@ -78,7 +75,7 @@ impl CtrlHandler {
             match msg {
                 ClientToController::CreateUser { username } => {
                     log::debug!("User created: {}", username);
-                    let result = self.database.create_user(username.clone()).await;
+                    let result = self.db.create_user(username.clone()).await;
                     let response = {
                         match result {
                             Ok(_) => ControllerToClient::UserCreated { username },

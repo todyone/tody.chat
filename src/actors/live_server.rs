@@ -1,4 +1,4 @@
-use crate::actors::DatabaseWrapper;
+use crate::actors::Database;
 use crate::assets::{read_assets, Assets};
 use crate::types::Id;
 use anyhow::Error;
@@ -19,12 +19,12 @@ use warp::{
 
 pub struct LiveServer {
     addr: SocketAddr,
-    database: DatabaseWrapper,
+    db: Database,
 }
 
 impl LiveServer {
-    pub fn new(addr: SocketAddr, database: DatabaseWrapper) -> Self {
-        Self { addr, database }
+    pub fn new(addr: SocketAddr, db: Database) -> Self {
+        Self { addr, db }
     }
 }
 
@@ -47,10 +47,10 @@ impl LiveServer {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
-        let database = self.database.clone();
+        let db = self.db.clone();
         let live = warp::path("live")
             .and(warp::ws())
-            .map(move |ws| LiveHandler::upgrade(ws, database.clone()));
+            .map(move |ws| LiveHandler::upgrade(ws, db.clone()));
         let assets = warp::path::tail().map(move |tail| asset_handler.handle(tail));
         let routes = index.or(live).or(assets);
         warp::serve(routes).run(self.addr).await;
@@ -87,19 +87,19 @@ impl AssetHandler {
 /// WebSocket handler for `LiveServer`.
 struct LiveHandler {
     websocket: WebSocket,
-    database: DatabaseWrapper,
+    db: Database,
     user_id: Option<Id>,
 }
 
 impl LiveHandler {
-    fn upgrade(ws: Ws, database: DatabaseWrapper) -> impl Reply {
-        ws.on_upgrade(|weboscket| Self::handle(weboscket, database))
+    fn upgrade(ws: Ws, db: Database) -> impl Reply {
+        ws.on_upgrade(|weboscket| Self::handle(weboscket, db))
     }
 
-    async fn handle(websocket: WebSocket, database: DatabaseWrapper) {
+    async fn handle(websocket: WebSocket, db: Database) {
         let this = Self {
             websocket,
-            database,
+            db,
             user_id: None,
         };
         if let Err(err) = this.routine().await {

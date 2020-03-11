@@ -10,9 +10,14 @@ use meio::{wrapper, Actor, Address, Context, Wrapper};
 use rusqlite::{params, Connection};
 use tokio::task::block_in_place as wait;
 
-wrapper!(DatabaseWrapper for Database);
+wrapper!(Database for DatabaseActor);
 
-impl DatabaseWrapper {
+impl Database {
+    pub fn start() -> Self {
+        let actor = DatabaseActor { dba: None };
+        meio::spawn(actor)
+    }
+
     pub async fn create_user(&mut self, username: Username) -> Result<(), Error> {
         self.send(Msg::CreateUser { username }).await
     }
@@ -26,14 +31,8 @@ impl DatabaseWrapper {
     }
 }
 
-pub struct Database {
+pub struct DatabaseActor {
     dba: Option<Dba>,
-}
-
-impl Database {
-    pub fn new() -> Self {
-        Self { dba: None }
-    }
 }
 
 pub enum Msg {
@@ -47,9 +46,9 @@ pub enum Msg {
 }
 
 #[async_trait]
-impl Actor for Database {
+impl Actor for DatabaseActor {
     type Message = Msg;
-    type Interface = DatabaseWrapper;
+    type Interface = Database;
 
     fn generic_name() -> &'static str {
         "Database"
@@ -61,7 +60,7 @@ impl Actor for Database {
 }
 
 /// Messagning routines.
-impl Database {
+impl DatabaseActor {
     /// `select!` macro can't be used in `routine` directly because of:
     /// ```
     /// error[E0434]: can't capture dynamic environment in a fn item
@@ -103,8 +102,8 @@ impl Database {
     }
 }
 
-/// Database routines.
-impl Database {
+/// DatabaseActor routines.
+impl DatabaseActor {
     fn dba(&mut self) -> &mut Dba {
         self.dba.as_mut().expect("DBA lost")
     }
