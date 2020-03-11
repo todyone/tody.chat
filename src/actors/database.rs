@@ -6,7 +6,7 @@ use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, StreamExt};
-use meio::{wrapper, Actor, Context};
+use meio::{wrapper, Actor, Address, Context, Interaction, InteractionHandler};
 use tokio::task::block_in_place as wait;
 
 wrapper!(Database for DatabaseActor);
@@ -16,7 +16,10 @@ impl Database {
         let actor = DatabaseActor { dba: None };
         meio::spawn(actor)
     }
+}
 
+/*
+{
     pub async fn create_user(&mut self, username: Username) -> Result<(), Error> {
         self.send(Msg::CreateUser { username }).await
     }
@@ -34,82 +37,74 @@ impl Database {
         todo!();
     }
 }
+*/
 
 pub struct DatabaseActor {
     dba: Option<Dba>,
 }
 
-pub enum Msg {
-    CreateUser {
-        username: Username,
-    },
-    SetPassword {
-        username: Username,
-        password: Password,
-    },
-    GetUser {
-        username: Username,
-    },
+pub struct CreateUser {
+    username: Username,
+}
+
+impl Interaction for CreateUser {
+    type Output = ();
+}
+
+struct SetPassword {
+    username: Username,
+    password: Password,
+}
+
+impl Interaction for SetPassword {
+    type Output = ();
+}
+
+struct GetUser {
+    username: Username,
+}
+
+impl Interaction for GetUser {
+    type Output = User;
 }
 
 #[async_trait]
 impl Actor for DatabaseActor {
-    type Message = Msg;
     type Interface = Database;
 
     fn generic_name() -> &'static str {
         "Database"
     }
 
-    async fn routine(&mut self, ctx: Context<Self>) -> Result<(), Error> {
-        self.run(ctx).await
-    }
-}
-
-/// Messagning routines.
-impl DatabaseActor {
-    /// `select!` macro can't be used in `routine` directly because of:
-    /// ```
-    /// error[E0434]: can't capture dynamic environment in a fn item
-    ///  --> src/actors/database.rs:40:25
-    ///   |
-    ///   |                         self.process_message(msg).await?;
-    ///   |                         ^^^^
-    ///   |
-    ///   = help: use the `|| { ... }` closure form instead
-    ///   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-    /// ```
-    async fn run(&mut self, mut ctx: Context<Self>) -> Result<(), Error> {
+    async fn initialize(&mut self, _address: Address<Self>) -> Result<(), Error> {
         let dba = Dba::open()?;
         self.dba = Some(dba);
         wait(|| self.dba().initialize())?;
-        loop {
-            select! {
-                msg = ctx.rx.next() => {
-                    if let Some(msg) = msg {
-                        self.process_message(msg).await?;
-                    } else {
-                        log::trace!("Consumer of database closed. Terminating database actor...");
-                        break;
-                    }
-                }
-            }
-        }
         Ok(())
     }
+}
 
-    async fn process_message(&mut self, msg: Msg) -> Result<(), Error> {
-        match msg {
-            Msg::CreateUser { username } => {
-                wait(|| self.dba().create_user(username))?;
-            }
-            Msg::SetPassword { username, password } => {
-                // TODO: Protect password
-                wait(|| self.dba().set_password(username, password))?;
-            }
-            Msg::GetUser { username } => {}
-        }
+#[async_trait]
+impl InteractionHandler<CreateUser> for DatabaseActor {
+    async fn handle(&mut self, input: CreateUser) -> Result<(), Error> {
+        wait(|| self.dba().create_user(input.username))?;
         Ok(())
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<SetPassword> for DatabaseActor {
+    async fn handle(&mut self, input: SetPassword) -> Result<(), Error> {
+        // TODO: Protect password
+        wait(|| self.dba().set_password(input.username, input.password))?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<GetUser> for DatabaseActor {
+    async fn handle(&mut self, input: GetUser) -> Result<User, Error> {
+        todo!();
     }
 }
 
