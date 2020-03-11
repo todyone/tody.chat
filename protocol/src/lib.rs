@@ -16,4 +16,7 @@ pub enum ClientToServer {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum ServerToClient {}
+pub enum ServerToClient {
+    LoggedIn,
+    LoginFail,
+}

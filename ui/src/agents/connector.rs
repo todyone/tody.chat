@@ -71,7 +71,18 @@ impl Agent for Connector {
     fn update(&mut self, msg: Self::Message) {
         log::info!("Agent message: {:?}", msg);
         match msg {
-            Msg::WsReady(_res) => {}
+            Msg::WsReady(res) => {
+                match res {
+                    Ok(ServerToClient::LoggedIn) => {
+                        self.set_status(Status::LoggedIn);
+                    }
+                    Ok(ServerToClient::LoginFail) => {
+                    }
+                    Err(err) => {
+                        log::error!("WS incoming error: {}", err);
+                    }
+                }
+            }
             Msg::WsStatus(status) => match status {
                 WebSocketStatus::Opened => {
                     self.set_status(Status::Connected);

@@ -3,17 +3,17 @@ use crate::assets::{read_assets, Assets};
 use crate::types::Id;
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use headers::{ContentType, HeaderMapExt};
 use meio::{wrapper, Actor, Context};
-use protocol::ClientToServer;
+use protocol::{ClientToServer, ServerToClient};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place as wait;
 use warp::{
     http::{StatusCode, Uri},
     path::Tail,
-    ws::{WebSocket, Ws},
+    ws::{Message, WebSocket, Ws},
     Filter, Reply,
 };
 
@@ -89,7 +89,6 @@ impl AssetHandler {
 
 /// WebSocket handler for `LiveServerActor`.
 struct LiveHandler {
-    websocket: WebSocket,
     db: Database,
     user_id: Option<Id>,
 }
@@ -100,29 +99,37 @@ impl LiveHandler {
     }
 
     async fn handle(websocket: WebSocket, db: Database) {
-        let this = Self {
-            websocket,
-            db,
-            user_id: None,
-        };
-        if let Err(err) = this.routine().await {
+        let this = Self { db, user_id: None };
+        if let Err(err) = this.routine(websocket).await {
             log::error!("LiveHandler error: {}", err);
         }
     }
 
-    async fn routine(mut self) -> Result<(), Error> {
-        let (_tx, mut rx) = self.websocket.split();
+    async fn routine(mut self, websocket: WebSocket) -> Result<(), Error> {
+        let (mut tx, mut rx) = websocket.split();
         while let Some(msg) = rx.next().await.transpose()? {
             let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
             log::trace!("Received: {:?}", request);
-            match request {
-                ClientToServer::Login(creds) => {
-                    let user = self.db.get_user(creds.username).await?;
-                    // TODO: 1. Get user
-                    // TODO: 2. Check password
+            let response = self.process_request(request).await?;
+            let bytes = serde_json::to_vec(&response)?;
+            let message = Message::binary(bytes);
+            // TODO: Consider: track numbers instead of sequental processing
+            tx.send(message).await?;
+        }
+        Ok(())
+    }
+
+    async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
+        match request {
+            ClientToServer::Login(creds) => {
+                let user = self.db.get_user(creds.username).await?;
+                // TODO: Use normal protected passwords
+                if user.password == creds.password {
+                    Ok(ServerToClient::LoggedIn)
+                } else {
+                    Ok(ServerToClient::LoginFail)
                 }
             }
         }
-        Ok(())
     }
 }
