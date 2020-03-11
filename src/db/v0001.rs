@@ -34,6 +34,7 @@ impl Dba {
         log::debug!("Creating tables...");
         self.create_users_table()?;
         self.create_channels_table()?;
+        self.create_members_table()?;
         Ok(())
     }
 

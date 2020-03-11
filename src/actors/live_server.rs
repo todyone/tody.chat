@@ -5,7 +5,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use futures::StreamExt;
 use headers::{ContentType, HeaderMapExt};
-use meio::{Actor, Context, Wrapper};
+use meio::{wrapper, Actor, Context};
 use protocol::ClientToServer;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -17,21 +17,24 @@ use warp::{
     Filter, Reply,
 };
 
-pub struct LiveServer {
+wrapper!(LiveServer for LiveServerActor);
+
+impl LiveServer {
+    pub fn start(addr: SocketAddr, db: Database) -> Self {
+        let actor = LiveServerActor { addr, db };
+        meio::spawn(actor)
+    }
+}
+
+pub struct LiveServerActor {
     addr: SocketAddr,
     db: Database,
 }
 
-impl LiveServer {
-    pub fn new(addr: SocketAddr, db: Database) -> Self {
-        Self { addr, db }
-    }
-}
-
 #[async_trait]
-impl Actor for LiveServer {
+impl Actor for LiveServerActor {
     type Message = ();
-    type Interface = Wrapper<Self>;
+    type Interface = LiveServer;
 
     fn generic_name() -> &'static str {
         "LiveServer"
@@ -43,7 +46,7 @@ impl Actor for LiveServer {
     }
 }
 
-impl LiveServer {
+impl LiveServerActor {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
@@ -84,7 +87,7 @@ impl AssetHandler {
     }
 }
 
-/// WebSocket handler for `LiveServer`.
+/// WebSocket handler for `LiveServerActor`.
 struct LiveHandler {
     websocket: WebSocket,
     db: Database,

@@ -3,26 +3,29 @@ use crate::control::{ClientToController, ControllerProtocol, ControllerToClient}
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{select, SinkExt, StreamExt};
-use meio::{Actor, Address, Context, Wrapper};
+use futures::{SinkExt, StreamExt};
+use meio::{wrapper, Actor, Context};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
-pub struct CtrlServer {
+wrapper!(CtrlServer for CtrlServerActor);
+
+impl CtrlServer {
+    pub fn start(addr: SocketAddr, db: Database) -> Self {
+        let actor = CtrlServerActor { addr, db };
+        meio::spawn(actor)
+    }
+}
+
+pub struct CtrlServerActor {
     addr: SocketAddr,
     db: Database,
 }
 
-impl CtrlServer {
-    pub fn new(addr: SocketAddr, db: Database) -> Self {
-        Self { addr, db }
-    }
-}
-
 #[async_trait]
-impl Actor for CtrlServer {
+impl Actor for CtrlServerActor {
     type Message = ();
-    type Interface = Wrapper<Self>;
+    type Interface = CtrlServer;
 
     fn generic_name() -> &'static str {
         "CtrlServer"
@@ -35,7 +38,7 @@ impl Actor for CtrlServer {
     }
 }
 
-impl CtrlServer {
+impl CtrlServerActor {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();

@@ -6,8 +6,7 @@ use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{select, StreamExt};
-use meio::{wrapper, Actor, Address, Context, Wrapper};
-use rusqlite::{params, Connection};
+use meio::{wrapper, Actor, Context};
 use tokio::task::block_in_place as wait;
 
 wrapper!(Database for DatabaseActor);
