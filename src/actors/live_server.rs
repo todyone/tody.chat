@@ -110,13 +110,14 @@ impl LiveHandler {
         }
     }
 
-    async fn routine(self) -> Result<(), Error> {
+    async fn routine(mut self) -> Result<(), Error> {
         let (_tx, mut rx) = self.websocket.split();
         while let Some(msg) = rx.next().await.transpose()? {
             let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
             log::trace!("Received: {:?}", request);
             match request {
                 ClientToServer::Login(creds) => {
+                    let user = self.db.get_user(creds.username).await?;
                     // TODO: 1. Get user
                     // TODO: 2. Check password
                 }

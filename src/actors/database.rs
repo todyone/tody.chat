@@ -1,7 +1,7 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
-use crate::db::Dba;
+use crate::db::{Dba, User};
 use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -28,6 +28,11 @@ impl Database {
     ) -> Result<(), Error> {
         self.send(Msg::SetPassword { username, password }).await
     }
+
+    pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
+        self.send(Msg::GetUser { username }).await?;
+        todo!();
+    }
 }
 
 pub struct DatabaseActor {
@@ -41,6 +46,9 @@ pub enum Msg {
     SetPassword {
         username: Username,
         password: Password,
+    },
+    GetUser {
+        username: Username,
     },
 }
 
@@ -95,7 +103,11 @@ impl DatabaseActor {
             Msg::CreateUser { username } => {
                 wait(|| self.dba().create_user(username))?;
             }
-            Msg::SetPassword { .. } => {}
+            Msg::SetPassword { username, password } => {
+                // TODO: Protect password
+                wait(|| self.dba().set_password(username, password))?;
+            }
+            Msg::GetUser { username } => {}
         }
         Ok(())
     }

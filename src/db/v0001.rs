@@ -90,6 +90,15 @@ impl Dba {
         Ok(())
     }
 
+    pub fn set_password(&mut self, username: Username, password: Password) -> Result<(), DbaError> {
+        log::trace!("Setting password for user: {}", username);
+        self.conn.execute(
+            "UPDATE users SET password = ? WHERE username = ?",
+            params![&password, &username],
+        )?;
+        Ok(())
+    }
+
     pub fn get_user(&mut self, username: Username) -> Result<User, DbaError> {
         log::trace!("Getting user: {}", username);
         let user = self.conn.query_row(
