@@ -16,12 +16,9 @@ impl Database {
         let actor = DatabaseActor { dba: None };
         meio::spawn(actor)
     }
-}
 
-/*
-{
     pub async fn create_user(&mut self, username: Username) -> Result<(), Error> {
-        self.send(Msg::CreateUser { username }).await
+        self.interaction(CreateUser { username }).await
     }
 
     pub async fn set_password(
@@ -29,15 +26,14 @@ impl Database {
         username: Username,
         password: Password,
     ) -> Result<(), Error> {
-        self.send(Msg::SetPassword { username, password }).await
+        self.interaction(SetPassword { username, password }).await
     }
 
     pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
-        self.send(Msg::GetUser { username }).await?;
+        self.interaction(GetUser { username }).await?;
         todo!();
     }
 }
-*/
 
 pub struct DatabaseActor {
     dba: Option<Dba>,
@@ -87,8 +83,7 @@ impl Actor for DatabaseActor {
 #[async_trait]
 impl InteractionHandler<CreateUser> for DatabaseActor {
     async fn handle(&mut self, input: CreateUser) -> Result<(), Error> {
-        wait(|| self.dba().create_user(input.username))?;
-        Ok(())
+        wait(|| self.dba().create_user(input.username)).map_err(Error::from)
     }
 }
 
@@ -96,15 +91,14 @@ impl InteractionHandler<CreateUser> for DatabaseActor {
 impl InteractionHandler<SetPassword> for DatabaseActor {
     async fn handle(&mut self, input: SetPassword) -> Result<(), Error> {
         // TODO: Protect password
-        wait(|| self.dba().set_password(input.username, input.password))?;
-        Ok(())
+        wait(|| self.dba().set_password(input.username, input.password)).map_err(Error::from)
     }
 }
 
 #[async_trait]
 impl InteractionHandler<GetUser> for DatabaseActor {
     async fn handle(&mut self, input: GetUser) -> Result<User, Error> {
-        todo!();
+        wait(|| self.dba().get_user(input.username)).map_err(Error::from)
     }
 }
 

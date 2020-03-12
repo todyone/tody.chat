@@ -77,7 +77,6 @@ impl CtrlHandler {
             match msg {
                 ClientToController::CreateUser { username } => {
                     log::debug!("User created: {}", username);
-                    /*
                     let result = self.db.create_user(username.clone()).await;
                     let response = {
                         match result {
@@ -89,7 +88,6 @@ impl CtrlHandler {
                         }
                     };
                     self.send(response).await?;
-                    */
                 }
                 ClientToController::SetPassword { username, password } => {
                     log::debug!("Password updated: {}", username);

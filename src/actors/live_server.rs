@@ -121,7 +121,6 @@ impl LiveHandler {
     async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
         match request {
             ClientToServer::Login(creds) => {
-                /*
                 let user = self.db.get_user(creds.username).await?;
                 // TODO: Use normal protected passwords
                 if user.password == creds.password {
@@ -129,8 +128,6 @@ impl LiveHandler {
                 } else {
                     Ok(ServerToClient::LoginFail)
                 }
-                */
-                todo!();
             }
         }
     }
