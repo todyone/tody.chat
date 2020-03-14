@@ -64,7 +64,7 @@ impl Dba {
         self.conn.execute(
             "CREATE TABLE sessions (
                 id INTEGER PRIMARY KEY,
-                key TEXT NOT UNLL UNIQUE,
+                key TEXT NOT NULL UNIQUE,
                 user_id INTEGER NOT NULL,
                 FOREIGN KEY (user_id)
                     REFERENCES users (id)
@@ -176,7 +176,7 @@ mod tests {
         let mut dba = dba()?;
         dba.create_user(username.clone())?;
         dba.set_password(username.clone(), password.clone())?;
-        let user = dba.get_user(username.clone())?.expect("user not found");
+        let user = dba.find_user(username.clone())?.expect("user not found");
         assert_eq!(user.username, username);
         assert_eq!(user.password, password);
         Ok(())
@@ -186,7 +186,7 @@ mod tests {
     fn user_not_exists() -> Result<(), DbaError> {
         let username = Username::from("username");
         let mut dba = dba()?;
-        let user = dba.get_user(username.clone())?;
+        let user = dba.find_user(username.clone())?;
         assert!(user.is_none());
         Ok(())
     }
