@@ -10,6 +10,11 @@ pub struct User {
     pub password: Password,
 }
 
+#[derive(Debug, Clone)]
+pub struct Session {
+    pub id: Id,
+}
+
 #[derive(Error, Debug)]
 pub enum DbaError {
     #[error("db error: {0}")]
@@ -34,6 +39,7 @@ impl Dba {
     fn create_tables(&mut self) -> Result<(), DbaError> {
         log::debug!("Creating tables...");
         self.create_users_table()?;
+        self.create_sessions_table()?;
         self.create_channels_table()?;
         self.create_members_table()?;
         Ok(())
@@ -47,6 +53,21 @@ impl Dba {
                 username TEXT NOT NULL,
                 password TEXT,
                 email TEXT
+            )",
+            params![],
+        )?;
+        Ok(())
+    }
+
+    fn create_sessions_table(&mut self) -> Result<(), DbaError> {
+        log::debug!("Creating sessions table");
+        self.conn.execute(
+            "CREATE TABLE sessions (
+                id INTEGER PRIMARY KEY,
+                key TEXT NOT UNLL UNIQUE,
+                user_id INTEGER NOT NULL,
+                FOREIGN KEY (user_id)
+                    REFERENCES users (id)
             )",
             params![],
         )?;
@@ -91,6 +112,16 @@ impl Dba {
         Ok(())
     }
 
+    pub fn create_session(&mut self, user_id: Id) -> Result<(), DbaError> {
+        log::trace!("Creating session for: {}", user_id);
+        todo!();
+    }
+
+    pub fn get_session(&mut self, user_id: Id) -> Result<Session, DbaError> {
+        log::trace!("Getting session: {}", user_id);
+        todo!();
+    }
+
     pub fn set_password(&mut self, username: Username, password: Password) -> Result<(), DbaError> {
         log::trace!("Setting password for user: {}", username);
         self.conn.execute(
@@ -100,7 +131,7 @@ impl Dba {
         Ok(())
     }
 
-    pub fn get_user(&mut self, username: Username) -> Result<Option<User>, DbaError> {
+    pub fn find_user(&mut self, username: Username) -> Result<Option<User>, DbaError> {
         log::trace!("Getting user: {}", username);
         let user = self.conn.query_row(
             "SELECT id, username, password, email FROM users WHERE username = ?",

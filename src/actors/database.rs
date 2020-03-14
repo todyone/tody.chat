@@ -28,8 +28,8 @@ impl Database {
         self.interaction(SetPassword { username, password }).await
     }
 
-    pub async fn get_user(&mut self, username: Username) -> Result<Option<User>, Error> {
-        self.interaction(GetUser { username }).await
+    pub async fn find_user(&mut self, username: Username) -> Result<Option<User>, Error> {
+        self.interaction(FindUser { username }).await
     }
 }
 
@@ -54,12 +54,11 @@ impl Interaction for SetPassword {
     type Output = ();
 }
 
-// TODO: Rename to FindUser
-struct GetUser {
+struct FindUser {
     username: Username,
 }
 
-impl Interaction for GetUser {
+impl Interaction for FindUser {
     type Output = Option<User>;
 }
 
@@ -95,9 +94,9 @@ impl InteractionHandler<SetPassword> for DatabaseActor {
 }
 
 #[async_trait]
-impl InteractionHandler<GetUser> for DatabaseActor {
-    async fn handle(&mut self, input: GetUser) -> Result<Option<User>, Error> {
-        wait(|| self.dba().get_user(input.username)).map_err(Error::from)
+impl InteractionHandler<FindUser> for DatabaseActor {
+    async fn handle(&mut self, input: FindUser) -> Result<Option<User>, Error> {
+        wait(|| self.dba().find_user(input.username)).map_err(Error::from)
     }
 }
 
