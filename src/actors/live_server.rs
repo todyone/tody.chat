@@ -1,5 +1,6 @@
 use crate::actors::Database;
 use crate::assets::{read_assets, Assets};
+use crate::generators::generate_key;
 use crate::types::Id;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -134,7 +135,10 @@ impl LiveHandler {
             ClientToServer::Login(creds) => {
                 let user = self.db.find_user(creds.username).await?;
                 match user {
-                    Some(user) if user.password == creds.password => Ok(ServerToClient::LoggedIn),
+                    Some(user) if user.password == creds.password => {
+                        let key = generate_key();
+                        Ok(ServerToClient::LoggedIn { key })
+                    }
                     Some(_) | None => {
                         // Don't share the reason
                         Ok(ServerToClient::LoginFail)

@@ -5,6 +5,7 @@ mod assets;
 mod client;
 mod control;
 mod db;
+mod generators;
 mod network;
 mod opts;
 mod server;

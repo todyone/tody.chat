@@ -18,6 +18,7 @@ log = "0.4.8"
 meio = { git = "ssh://git@github.com/DenisKolodin/meio" }
 mime_guess = "2.0.3"
 protocol = { path = "./protocol" }
+rand = "0.7.3"
 rusqlite = "0.21.0"
 serde = "1.0.104"
 serde_cbor = "0.11.1"

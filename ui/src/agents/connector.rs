@@ -73,7 +73,7 @@ impl Agent for Connector {
         match msg {
             Msg::WsReady(res) => {
                 match res {
-                    Ok(ServerToClient::LoggedIn) => {
+                    Ok(ServerToClient::LoggedIn { key }) => {
                         self.set_status(Status::LoggedIn);
                     }
                     Ok(ServerToClient::LoginFail) => {
