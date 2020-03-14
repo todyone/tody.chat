@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;
 use thiserror::Error;
 
+#[derive(Debug, Clone)]
 pub struct User {
     pub id: Id,
     pub username: Username,
@@ -99,14 +100,18 @@ impl Dba {
         Ok(())
     }
 
-    pub fn get_user(&mut self, username: Username) -> Result<User, DbaError> {
+    pub fn get_user(&mut self, username: Username) -> Result<Option<User>, DbaError> {
         log::trace!("Getting user: {}", username);
         let user = self.conn.query_row(
             "SELECT id, username, password, email FROM users WHERE username = ?",
             params![&username],
             |row| User::try_from(row),
-        )?;
-        Ok(user)
+        );
+        match user {
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(err) => Err(DbaError::DbError(err)),
+            Ok(user) => Ok(Some(user)),
+        }
     }
 }
 
@@ -119,5 +124,38 @@ impl TryFrom<&Row<'_>> for User {
             username: row.get(1)?,
             password: row.get(2)?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dba() -> Result<Dba, DbaError> {
+        let mut dba = Dba::open()?;
+        dba.initialize()?;
+        Ok(dba)
+    }
+
+    #[test]
+    fn user_creation() -> Result<(), DbaError> {
+        let username = Username::from("username");
+        let password = Password::from("password");
+        let mut dba = dba()?;
+        dba.create_user(username.clone())?;
+        dba.set_password(username.clone(), password.clone())?;
+        let user = dba.get_user(username.clone())?.expect("user not found");
+        assert_eq!(user.username, username);
+        assert_eq!(user.password, password);
+        Ok(())
+    }
+
+    #[test]
+    fn user_not_exists() -> Result<(), DbaError> {
+        let username = Username::from("username");
+        let mut dba = dba()?;
+        let user = dba.get_user(username.clone())?;
+        assert!(user.is_none());
+        Ok(())
     }
 }
