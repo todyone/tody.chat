@@ -77,22 +77,28 @@ impl CtrlHandler {
             match msg {
                 ClientToController::CreateUser { username } => {
                     log::debug!("User created: {}", username);
-                    let result = self.db.create_user(username.clone()).await;
-                    let response = {
-                        match result {
-                            Ok(_) => ControllerToClient::UserCreated { username },
-                            Err(err) => {
-                                log::error!("Can't create user: {}", err);
-                                todo!();
-                            }
-                        }
-                    };
+                    let response = self
+                        .db
+                        .create_user(username.clone())
+                        .await
+                        .map(|_| ControllerToClient::UserCreated { username })
+                        .unwrap_or_else(|err| {
+                            log::error!("Can't create user: {}", err);
+                            ControllerToClient::Fail(err.to_string())
+                        });
                     self.send(response).await?;
                 }
                 ClientToController::SetPassword { username, password } => {
                     log::debug!("Password updated: {}", username);
-                    let response = ControllerToClient::PasswordSet { username };
-                    // TODO: Set password impl
+                    let response = self
+                        .db
+                        .set_password(username.clone(), password)
+                        .await
+                        .map(|_| ControllerToClient::PasswordSet { username })
+                        .unwrap_or_else(|err| {
+                            log::error!("Can't set new password: {}", err);
+                            ControllerToClient::Fail(err.to_string())
+                        });
                     self.send(response).await?;
                 }
             }

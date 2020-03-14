@@ -26,6 +26,7 @@ pub enum ClientToController {
 pub enum ControllerToClient {
     UserCreated { username: Username },
     PasswordSet { username: Username },
+    Fail(String),
 }
 
 #[derive(Error, Debug)]

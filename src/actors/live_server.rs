@@ -125,11 +125,12 @@ impl LiveHandler {
         match request {
             ClientToServer::Login(creds) => {
                 let user = self.db.get_user(creds.username).await?;
-                // TODO: Use normal protected passwords
-                if user.password == creds.password {
-                    Ok(ServerToClient::LoggedIn)
-                } else {
-                    Ok(ServerToClient::LoginFail)
+                match user {
+                    Some(user) if user.password == creds.password => Ok(ServerToClient::LoggedIn),
+                    Some(_) | None => {
+                        // Don't share the reason
+                        Ok(ServerToClient::LoginFail)
+                    }
                 }
             }
         }

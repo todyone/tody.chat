@@ -5,8 +5,7 @@ use crate::db::{Dba, User};
 use crate::types::{Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
-use futures::{select, StreamExt};
-use meio::{wrapper, Actor, Address, Context, Interaction, InteractionHandler};
+use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
 use tokio::task::block_in_place as wait;
 
 wrapper!(Database for DatabaseActor);
@@ -29,7 +28,7 @@ impl Database {
         self.interaction(SetPassword { username, password }).await
     }
 
-    pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
+    pub async fn get_user(&mut self, username: Username) -> Result<Option<User>, Error> {
         self.interaction(GetUser { username }).await
     }
 }
@@ -55,12 +54,13 @@ impl Interaction for SetPassword {
     type Output = ();
 }
 
+// TODO: Rename to FindUser
 struct GetUser {
     username: Username,
 }
 
 impl Interaction for GetUser {
-    type Output = User;
+    type Output = Option<User>;
 }
 
 #[async_trait]
@@ -96,7 +96,7 @@ impl InteractionHandler<SetPassword> for DatabaseActor {
 
 #[async_trait]
 impl InteractionHandler<GetUser> for DatabaseActor {
-    async fn handle(&mut self, input: GetUser) -> Result<User, Error> {
+    async fn handle(&mut self, input: GetUser) -> Result<Option<User>, Error> {
         wait(|| self.dba().get_user(input.username)).map_err(Error::from)
     }
 }
