@@ -109,7 +109,6 @@ impl LiveHandler {
         let (mut tx, mut rx) = websocket.split();
         while let Some(msg) = rx.next().await.transpose()? {
             if msg.is_text() || msg.is_binary() {
-                log::trace!("Msg: {:?}", msg);
                 let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
                 log::trace!("Received: {:?}", request);
                 let response = self
@@ -122,8 +121,10 @@ impl LiveHandler {
                 tx.send(message).await?;
             } else if msg.is_close() {
                 break;
+            } else {
+                // Ignore Ping and Pong messages
+                log::warn!("Unhandled WebSocket message: {:?}", msg);
             }
-            // Ignore Ping and Pong messages
         }
         Ok(())
     }
