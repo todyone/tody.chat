@@ -138,6 +138,7 @@ impl Dba {
             params![&username],
             |row| User::try_from(row),
         );
+        log::trace!("Find user result: {:?}", user);
         match user {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(err) => Err(DbaError::DbError(err)),

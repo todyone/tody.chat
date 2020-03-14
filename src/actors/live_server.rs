@@ -100,23 +100,30 @@ impl LiveHandler {
     async fn handle(websocket: WebSocket, db: Database) {
         let this = Self { db, user_id: None };
         if let Err(err) = this.routine(websocket).await {
-            log::error!("LiveHandler error: {}", err);
+            log::warn!("LiveHandler error: {}", err);
         }
     }
 
     async fn routine(mut self, websocket: WebSocket) -> Result<(), Error> {
+        log::trace!("Live WebSocket session started");
         let (mut tx, mut rx) = websocket.split();
         while let Some(msg) = rx.next().await.transpose()? {
-            let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
-            log::trace!("Received: {:?}", request);
-            let response = self
-                .process_request(request)
-                .await
-                .unwrap_or_else(|err| ServerToClient::Fail(err.to_string()));
-            let bytes = serde_json::to_vec(&response)?;
-            let message = Message::binary(bytes);
-            // TODO: Consider: track numbers instead of sequental processing
-            tx.send(message).await?;
+            if msg.is_text() || msg.is_binary() {
+                log::trace!("Msg: {:?}", msg);
+                let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
+                log::trace!("Received: {:?}", request);
+                let response = self
+                    .process_request(request)
+                    .await
+                    .unwrap_or_else(|err| ServerToClient::Fail(err.to_string()));
+                let bytes = serde_json::to_vec(&response)?;
+                let message = Message::binary(bytes);
+                // TODO: Consider: track numbers instead of sequental processing
+                tx.send(message).await?;
+            } else if msg.is_close() {
+                break;
+            }
+            // Ignore Ping and Pong messages
         }
         Ok(())
     }

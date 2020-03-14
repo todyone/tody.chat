@@ -697,8 +697,8 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 
 [[package]]
 name = "meio"
-version = "0.4.0"
-source = "git+ssh://git@github.com/DenisKolodin/meio#5c0ad0df8ca8355d2783cdf218d1c39b55d0e9e6"
+version = "0.6.0"
+source = "git+ssh://git@github.com/DenisKolodin/meio#8de3094e9b060fbc4011b033e33d870eb2ff2c95"
 dependencies = [
  "anyhow",
  "async-trait",
