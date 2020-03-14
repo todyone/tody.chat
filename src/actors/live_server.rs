@@ -109,7 +109,10 @@ impl LiveHandler {
         while let Some(msg) = rx.next().await.transpose()? {
             let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
             log::trace!("Received: {:?}", request);
-            let response = self.process_request(request).await?;
+            let response = self
+                .process_request(request)
+                .await
+                .unwrap_or_else(|err| ServerToClient::Fail(err.to_string()));
             let bytes = serde_json::to_vec(&response)?;
             let message = Message::binary(bytes);
             // TODO: Consider: track numbers instead of sequental processing

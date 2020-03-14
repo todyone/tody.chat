@@ -78,6 +78,8 @@ impl Agent for Connector {
                     }
                     Ok(ServerToClient::LoginFail) => {
                     }
+                    Ok(ServerToClient::Fail(err)) => {
+                    }
                     Err(err) => {
                         log::error!("WS incoming error: {}", err);
                     }

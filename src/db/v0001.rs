@@ -84,7 +84,7 @@ impl Dba {
     pub fn create_user(&mut self, username: Username) -> Result<(), DbaError> {
         log::trace!("Creating user: {}", username);
         self.conn.execute(
-            "INSERT INTO users (username) VALUES (?)",
+            "INSERT INTO users (username, password) VALUES (?, '')",
             params![&username],
         )?;
         Ok(())

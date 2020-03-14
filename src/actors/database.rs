@@ -30,8 +30,7 @@ impl Database {
     }
 
     pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
-        self.interaction(GetUser { username }).await?;
-        todo!();
+        self.interaction(GetUser { username }).await
     }
 }
 

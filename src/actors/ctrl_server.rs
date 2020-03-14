@@ -92,6 +92,7 @@ impl CtrlHandler {
                 ClientToController::SetPassword { username, password } => {
                     log::debug!("Password updated: {}", username);
                     let response = ControllerToClient::PasswordSet { username };
+                    // TODO: Set password impl
                     self.send(response).await?;
                 }
             }

@@ -19,4 +19,5 @@ pub enum ClientToServer {
 pub enum ServerToClient {
     LoggedIn,
     LoginFail,
+    Fail(String),
 }
