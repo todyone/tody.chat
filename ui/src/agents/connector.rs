@@ -5,7 +5,10 @@ use std::collections::HashSet;
 use thiserror::Error;
 use url::Url;
 use yew::format::Json;
-use yew::services::websocket::{WebSocketService, WebSocketStatus, WebSocketTask};
+use yew::services::{
+    storage::{Area, StorageService},
+    websocket::{WebSocketService, WebSocketStatus, WebSocketTask},
+};
 use yew::worker::*;
 
 #[derive(Error, Debug)]
@@ -25,10 +28,8 @@ pub enum ConnectionStatus {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum LoginStatus {
     Unauthorized,
-    NeedLoginKey,
-    NeedCredentials,
+    NeedCredentials { fail: Option<String> },
     LoggedId,
-    LoginFailed,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -39,7 +40,6 @@ pub enum Info {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum Action {
-    SetKey(Key),
     SetCredentials(Credentials),
     Subscribe(HashSet<Info>),
 }
@@ -61,6 +61,7 @@ pub struct Connector {
     connection_status: ConnectionStatus,
     login_status: LoginStatus,
     service: WebSocketService,
+    storage: StorageService,
     subscribers: HashSet<HandlerId>,
     ws: Option<WebSocketTask>,
     login_by: Option<LoginBy>,
@@ -81,15 +82,19 @@ impl Agent for Connector {
     fn create(link: AgentLink<Self>) -> Self {
         // TODO: Implement this in yew:
         // link.send_message(Msg::Connect);
-        Self {
+        let storage = StorageService::new(Area::Local).expect("Can't initialize LocalStorage");
+        let mut this = Self {
             link,
             connection_status: ConnectionStatus::Disconnected,
             login_status: LoginStatus::Unauthorized,
             service: WebSocketService::new(),
+            storage,
             subscribers: HashSet::new(),
             ws: None,
             login_by: None,
-        }
+        };
+        this.restore_key();
+        this
     }
 
     fn update(&mut self, msg: Self::Message) {
@@ -108,7 +113,8 @@ impl Agent for Connector {
                     self.set_connection_status(ConnectionStatus::Connected);
                     match self.login_by.as_ref() {
                         None => {
-                            self.set_login_status(LoginStatus::NeedLoginKey);
+                            let status = LoginStatus::NeedCredentials { fail: None };
+                            self.set_login_status(status);
                         }
                         Some(LoginBy::ByKey(key)) => {
                             // TODO: Try to send Key
@@ -128,10 +134,6 @@ impl Agent for Connector {
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
-            Action::SetKey(key) => {
-                self.login_by = Some(LoginBy::ByKey(key));
-                self.login();
-            }
             Action::SetCredentials(creds) => {
                 self.login_by = Some(LoginBy::ByCredentials(creds));
                 self.login();
@@ -159,6 +161,20 @@ impl Agent for Connector {
         if self.subscribers.is_empty() {
             self.ws.take();
         }
+    }
+}
+
+impl Connector {
+    const KEY: &'static str = "tody.chat.login_key";
+
+    fn store_key(&mut self, key: Key) {
+        self.storage.store(Self::KEY, Json(&key));
+        self.login_by = Some(LoginBy::ByKey(key));
+    }
+
+    fn restore_key(&mut self) {
+        let Json(key) = self.storage.restore(Self::KEY);
+        self.login_by = key.ok().map(LoginBy::ByKey);
     }
 }
 

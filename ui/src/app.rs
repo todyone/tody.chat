@@ -1,4 +1,4 @@
-use crate::agents::connector;
+use crate::agents::connector::{ConnectionStatus, Connector, LoginStatus, Notification};
 use crate::components::{Chat, Login, Splash};
 use yew::prelude::*;
 
@@ -11,12 +11,12 @@ enum Scene {
 pub struct App {
     scene: Scene,
     link: ComponentLink<Self>,
-    connector: Box<dyn Bridge<connector::Connector>>,
+    connector: Box<dyn Bridge<Connector>>,
 }
 
 pub enum Msg {
     Login,
-    FromConnector(connector::Notification),
+    FromConnector(Notification),
 }
 
 impl Component for App {
@@ -25,7 +25,7 @@ impl Component for App {
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|n| Msg::FromConnector(n));
-        let connector = connector::Connector::bridge(callback);
+        let connector = Connector::bridge(callback);
         Self {
             scene: Scene::Splash,
             link,
@@ -39,11 +39,19 @@ impl Component for App {
                 self.scene = Scene::Main;
             }
             Msg::FromConnector(notification) => match notification {
-                connector::Notification::ConnectionStatus(status) => match status {
-                    connector::ConnectionStatus::Disconnected => {}
-                    connector::ConnectionStatus::Connected => {}
+                Notification::ConnectionStatus(status) => match status {
+                    ConnectionStatus::Disconnected => {}
+                    ConnectionStatus::Connected => {}
                 },
-                connector::Notification::LoginStatus(status) => {}
+                Notification::LoginStatus(status) => match status {
+                    LoginStatus::Unauthorized => {
+                        self.scene = Scene::Splash;
+                    }
+                    LoginStatus::NeedCredentials { fail } => {
+                        self.scene = Scene::Login;
+                    }
+                    _ => {}
+                },
             },
         }
         true
