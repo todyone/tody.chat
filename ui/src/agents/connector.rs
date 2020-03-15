@@ -35,9 +35,9 @@ pub enum Notification {
 
 /// Keeps connection to WebSockets automatically.
 pub struct Connector {
+    link: AgentLink<Self>,
     status: Status,
     service: WebSocketService,
-    link: AgentLink<Connector>,
     subscribers: HashSet<HandlerId>,
     ws: Option<WebSocketTask>,
     credentials: Option<Credentials>,
@@ -59,9 +59,9 @@ impl Agent for Connector {
         // TODO: Implement this in yew:
         // link.send_message(Msg::Connect);
         Self {
+            link,
             status: Status::Disconnected,
             service: WebSocketService::new(),
-            link,
             subscribers: HashSet::new(),
             ws: None,
             credentials: None,
@@ -69,22 +69,18 @@ impl Agent for Connector {
     }
 
     fn update(&mut self, msg: Self::Message) {
-        log::info!("Agent message: {:?}", msg);
+        log::info!("Connector agent message: {:?}", msg);
         match msg {
-            Msg::WsReady(res) => {
-                match res {
-                    Ok(ServerToClient::LoggedIn { key }) => {
-                        self.set_status(Status::LoggedIn);
-                    }
-                    Ok(ServerToClient::LoginFail) => {
-                    }
-                    Ok(ServerToClient::Fail(err)) => {
-                    }
-                    Err(err) => {
-                        log::error!("WS incoming error: {}", err);
-                    }
+            Msg::WsReady(res) => match res {
+                Ok(ServerToClient::LoggedIn { key }) => {
+                    self.set_status(Status::LoggedIn);
                 }
-            }
+                Ok(ServerToClient::LoginFail) => {}
+                Ok(ServerToClient::Fail(err)) => {}
+                Err(err) => {
+                    log::error!("WS incoming error: {}", err);
+                }
+            },
             Msg::WsStatus(status) => match status {
                 WebSocketStatus::Opened => {
                     self.set_status(Status::Connected);
