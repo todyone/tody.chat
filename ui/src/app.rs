@@ -39,17 +39,11 @@ impl Component for App {
                 self.scene = Scene::Main;
             }
             Msg::FromConnector(notification) => match notification {
-                connector::Notification::StatusChanged(status) => match status {
-                    connector::Status::LoggedIn => {
-                        self.scene = Scene::Main;
-                    }
-                    connector::Status::Disconnected => {
-                        self.scene = Scene::Splash;
-                    }
-                    connector::Status::Connected => {
-                        self.scene = Scene::Login;
-                    }
+                connector::Notification::ConnectionStatus(status) => match status {
+                    connector::ConnectionStatus::Disconnected => {}
+                    connector::ConnectionStatus::Connected => {}
                 },
+                connector::Notification::LoginStatus(status) => {}
             },
         }
         true

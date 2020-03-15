@@ -1,5 +1,5 @@
 use anyhow::Error;
-use protocol::{ClientToServer, Credentials, ServerToClient};
+use protocol::{ClientToServer, Credentials, Key, ServerToClient};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -17,26 +17,42 @@ enum ConnectorError {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum Status {
+pub enum ConnectionStatus {
     Disconnected,
     Connected,
-    LoggedIn,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum LoginStatus {
+    Unauthorized,
+    LoggedId,
+    LoginFailed,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Info {
+    ConnectionInfo,
+    LoginInfo,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum Action {
+    SetKey(Key),
     SetCredentials(Credentials),
+    Subscribe(HashSet<Info>),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Notification {
-    StatusChanged(Status),
+    ConnectionStatus(ConnectionStatus),
+    LoginStatus(LoginStatus),
 }
 
 /// Keeps connection to WebSockets automatically.
 pub struct Connector {
     link: AgentLink<Self>,
-    status: Status,
+    connection_status: ConnectionStatus,
+    login_status: LoginStatus,
     service: WebSocketService,
     subscribers: HashSet<HandlerId>,
     ws: Option<WebSocketTask>,
@@ -60,7 +76,8 @@ impl Agent for Connector {
         // link.send_message(Msg::Connect);
         Self {
             link,
-            status: Status::Disconnected,
+            connection_status: ConnectionStatus::Disconnected,
+            login_status: LoginStatus::Unauthorized,
             service: WebSocketService::new(),
             subscribers: HashSet::new(),
             ws: None,
@@ -72,9 +89,7 @@ impl Agent for Connector {
         log::info!("Connector agent message: {:?}", msg);
         match msg {
             Msg::WsReady(res) => match res {
-                Ok(ServerToClient::LoggedIn { key }) => {
-                    self.set_status(Status::LoggedIn);
-                }
+                Ok(ServerToClient::LoggedIn { key }) => {}
                 Ok(ServerToClient::LoginFail) => {}
                 Ok(ServerToClient::Fail(err)) => {}
                 Err(err) => {
@@ -83,10 +98,10 @@ impl Agent for Connector {
             },
             Msg::WsStatus(status) => match status {
                 WebSocketStatus::Opened => {
-                    self.set_status(Status::Connected);
+                    self.set_connection_status(ConnectionStatus::Connected);
                 }
                 WebSocketStatus::Closed | WebSocketStatus::Error => {
-                    self.set_status(Status::Disconnected);
+                    self.set_connection_status(ConnectionStatus::Disconnected);
                 }
             },
         }
@@ -95,12 +110,14 @@ impl Agent for Connector {
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
+            Action::SetKey(key) => {}
             Action::SetCredentials(value) => {
                 self.credentials = Some(value);
                 self.login();
                 // TODO: Set it on authorized
                 //self.set_status(Status::LoggedIn);
             }
+            Action::Subscribe(set) => {}
         }
     }
 
@@ -134,9 +151,9 @@ impl Connector {
         // TODO: Schedule reconnection...
     }
 
-    fn set_status(&mut self, status: Status) {
-        self.status = status;
-        let notification = Notification::StatusChanged(self.status.clone());
+    fn set_connection_status(&mut self, connection_status: ConnectionStatus) {
+        self.connection_status = connection_status;
+        let notification = Notification::ConnectionStatus(self.connection_status.clone());
         self.notify_subscribers(notification);
     }
 
@@ -168,8 +185,8 @@ impl Connector {
     }
 
     fn send_status_to(&self, id: HandlerId) {
-        let status = self.status.clone();
-        let notification = Notification::StatusChanged(status);
+        let connection_status = self.connection_status.clone();
+        let notification = Notification::ConnectionStatus(connection_status);
         self.link.respond(id, notification);
     }
 
