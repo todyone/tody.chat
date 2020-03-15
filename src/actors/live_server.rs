@@ -145,6 +145,9 @@ impl LiveHandler {
                     }
                 }
             }
+            ClientToServer::RestoreSession(key) => {
+                todo!();
+            }
         }
     }
 }

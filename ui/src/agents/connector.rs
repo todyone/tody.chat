@@ -48,6 +48,11 @@ pub enum Notification {
     LoginStatus(LoginStatus),
 }
 
+enum LoginBy {
+    ByKey(Key),
+    ByCredentials(Credentials),
+}
+
 /// Keeps connection to WebSockets automatically.
 pub struct Connector {
     link: AgentLink<Self>,
@@ -56,7 +61,7 @@ pub struct Connector {
     service: WebSocketService,
     subscribers: HashSet<HandlerId>,
     ws: Option<WebSocketTask>,
-    credentials: Option<Credentials>,
+    login_by: Option<LoginBy>,
 }
 
 #[derive(Debug)]
@@ -81,7 +86,7 @@ impl Agent for Connector {
             service: WebSocketService::new(),
             subscribers: HashSet::new(),
             ws: None,
-            credentials: None,
+            login_by: None,
         }
     }
 
@@ -110,9 +115,12 @@ impl Agent for Connector {
     fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
-            Action::SetKey(key) => {}
-            Action::SetCredentials(value) => {
-                self.credentials = Some(value);
+            Action::SetKey(key) => {
+                self.login_by = Some(LoginBy::ByKey(key));
+                self.login();
+            }
+            Action::SetCredentials(creds) => {
+                self.login_by = Some(LoginBy::ByCredentials(creds));
                 self.login();
                 // TODO: Set it on authorized
                 //self.set_status(Status::LoggedIn);
@@ -143,9 +151,13 @@ impl Agent for Connector {
 
 impl Connector {
     fn login(&mut self) {
-        if let Some(creds) = self.credentials.as_ref() {
-            let msg = ClientToServer::Login(creds.to_owned());
-            // TODO: Use `Result` instead of `unwrap`
+        if let Some(login_by) = self.login_by.as_ref() {
+            let msg = {
+                match login_by {
+                    LoginBy::ByCredentials(creds) => ClientToServer::Login(creds.to_owned()),
+                    LoginBy::ByKey(key) => ClientToServer::RestoreSession(key.to_owned()),
+                }
+            };
             self.ws.as_mut().unwrap().send(Json(&msg));
         }
         // TODO: Schedule reconnection...

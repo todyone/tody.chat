@@ -1,4 +1,5 @@
 use crate::agents::{connector, storage};
+use protocol::Key;
 use yew::prelude::*;
 
 pub struct Splash {
@@ -21,14 +22,26 @@ impl Component for Splash {
         let connector = connector::Connector::bridge(callback);
         let callback = link.callback(|n| Msg::FromStorage(n));
         let storage = storage::Storage::bridge(callback);
-        Self {
+        let mut this = Self {
             link,
             connector,
             storage,
-        }
+        };
+        this.request_login_key();
+        this
     }
 
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        match msg {
+            Msg::FromConnector(msg) => {}
+            Msg::FromStorage(msg) => match msg {
+                storage::Notification::LoginKeyResult(opt_key) => {
+                    if let Some(key) = opt_key {
+                        self.login_with_key(key);
+                    }
+                }
+            },
+        }
         true
     }
 
@@ -38,5 +51,17 @@ impl Component for Splash {
                 <img src="/loader.svg" />
             </div>
         }
+    }
+}
+
+impl Splash {
+    fn request_login_key(&mut self) {
+        let action = storage::Action::GetLoginKey;
+        self.storage.send(action);
+    }
+
+    fn login_with_key(&mut self, key: Key) {
+        let action = connector::Action::SetKey(key);
+        self.connector.send(action);
     }
 }
