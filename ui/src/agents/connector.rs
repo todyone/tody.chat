@@ -154,7 +154,7 @@ impl Connector {
         if let Some(login_by) = self.login_by.as_ref() {
             let msg = {
                 match login_by {
-                    LoginBy::ByCredentials(creds) => ClientToServer::Login(creds.to_owned()),
+                    LoginBy::ByCredentials(creds) => ClientToServer::CreateSession(creds.to_owned()),
                     LoginBy::ByKey(key) => ClientToServer::RestoreSession(key.to_owned()),
                 }
             };

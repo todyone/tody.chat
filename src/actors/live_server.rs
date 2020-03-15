@@ -132,7 +132,7 @@ impl LiveHandler {
 
     async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
         match request {
-            ClientToServer::Login(creds) => {
+            ClientToServer::CreateSession(creds) => {
                 let user = self.db.find_user(creds.username).await?;
                 match user {
                     Some(user) if user.password == creds.password => {

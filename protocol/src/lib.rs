@@ -14,7 +14,7 @@ pub struct Credentials {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum ClientToServer {
-    Login(Credentials),
+    CreateSession(Credentials),
     RestoreSession(Key),
 }
 
