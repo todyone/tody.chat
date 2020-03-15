@@ -1,4 +1,4 @@
-use crate::agents::{Connector, Notification, Status};
+use crate::agents::connector;
 use crate::components::{Chat, Login, Splash};
 use yew::prelude::*;
 
@@ -11,12 +11,12 @@ enum Scene {
 pub struct App {
     scene: Scene,
     link: ComponentLink<Self>,
-    connector: Box<dyn Bridge<Connector>>,
+    connector: Box<dyn Bridge<connector::Connector>>,
 }
 
 pub enum Msg {
     Login,
-    Notification(Notification),
+    FromConnector(connector::Notification),
 }
 
 impl Component for App {
@@ -24,8 +24,8 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let callback = link.callback(|n| Msg::Notification(n));
-        let connector = Connector::bridge(callback);
+        let callback = link.callback(|n| Msg::FromConnector(n));
+        let connector = connector::Connector::bridge(callback);
         Self {
             scene: Scene::Splash,
             link,
@@ -38,15 +38,15 @@ impl Component for App {
             Msg::Login => {
                 self.scene = Scene::Main;
             }
-            Msg::Notification(notification) => match notification {
-                Notification::StatusChanged(status) => match status {
-                    Status::LoggedIn => {
+            Msg::FromConnector(notification) => match notification {
+                connector::Notification::StatusChanged(status) => match status {
+                    connector::Status::LoggedIn => {
                         self.scene = Scene::Main;
                     }
-                    Status::Disconnected => {
+                    connector::Status::Disconnected => {
                         self.scene = Scene::Splash;
                     }
-                    Status::Connected => {
+                    connector::Status::Connected => {
                         self.scene = Scene::Login;
                     }
                 },
