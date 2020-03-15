@@ -25,6 +25,8 @@ pub enum ConnectionStatus {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum LoginStatus {
     Unauthorized,
+    NeedLoginKey,
+    NeedCredentials,
     LoggedId,
     LoginFailed,
 }
@@ -104,6 +106,17 @@ impl Agent for Connector {
             Msg::WsStatus(status) => match status {
                 WebSocketStatus::Opened => {
                     self.set_connection_status(ConnectionStatus::Connected);
+                    match self.login_by.as_ref() {
+                        None => {
+                            self.set_login_status(LoginStatus::NeedLoginKey);
+                        }
+                        Some(LoginBy::ByKey(key)) => {
+                            // TODO: Try to send Key
+                        }
+                        Some(LoginBy::ByCredentials(creds)) => {
+                            // TODO: Try to send Credentials
+                        }
+                    }
                 }
                 WebSocketStatus::Closed | WebSocketStatus::Error => {
                     self.set_connection_status(ConnectionStatus::Disconnected);
@@ -154,7 +167,9 @@ impl Connector {
         if let Some(login_by) = self.login_by.as_ref() {
             let msg = {
                 match login_by {
-                    LoginBy::ByCredentials(creds) => ClientToServer::CreateSession(creds.to_owned()),
+                    LoginBy::ByCredentials(creds) => {
+                        ClientToServer::CreateSession(creds.to_owned())
+                    }
                     LoginBy::ByKey(key) => ClientToServer::RestoreSession(key.to_owned()),
                 }
             };
@@ -166,6 +181,12 @@ impl Connector {
     fn set_connection_status(&mut self, connection_status: ConnectionStatus) {
         self.connection_status = connection_status;
         let notification = Notification::ConnectionStatus(self.connection_status.clone());
+        self.notify_subscribers(notification);
+    }
+
+    fn set_login_status(&mut self, login_status: LoginStatus) {
+        self.login_status = login_status;
+        let notification = Notification::LoginStatus(self.login_status.clone());
         self.notify_subscribers(notification);
     }
 
