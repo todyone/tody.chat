@@ -120,6 +120,7 @@ impl LiveHandler {
                 let message = Message::binary(bytes);
                 // TODO: Consider: track numbers instead of sequental processing
                 tx.send(message).await?;
+            } else if msg.is_ping() || msg.is_pong() {
             } else if msg.is_close() {
                 break;
             } else {
