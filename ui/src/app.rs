@@ -15,7 +15,6 @@ pub struct App {
 }
 
 pub enum Msg {
-    Login,
     FromConnector(Notification),
 }
 
@@ -35,9 +34,6 @@ impl Component for App {
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
-            Msg::Login => {
-                self.scene = Scene::Main;
-            }
             Msg::FromConnector(notification) => match notification {
                 Notification::ConnectionStatus(status) => match status {
                     ConnectionStatus::Disconnected => {}
@@ -50,7 +46,9 @@ impl Component for App {
                     LoginStatus::NeedCredentials { fail } => {
                         self.scene = Scene::Login;
                     }
-                    _ => {}
+                    LoginStatus::LoggedIn => {
+                        self.scene = Scene::Main;
+                    }
                 },
             },
         }

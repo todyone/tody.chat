@@ -28,8 +28,8 @@ pub enum ConnectionStatus {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum LoginStatus {
     Unauthorized,
-    NeedCredentials { fail: Option<String> },
-    LoggedId,
+    NeedCredentials { fail: bool },
+    LoggedIn,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -101,8 +101,15 @@ impl Agent for Connector {
         log::info!("Connector agent message: {:?}", msg);
         match msg {
             Msg::WsReady(res) => match res {
-                Ok(ServerToClient::LoggedIn { key }) => {}
-                Ok(ServerToClient::LoginFail) => {}
+                Ok(ServerToClient::LoggedIn { key }) => {
+                    let status = LoginStatus::LoggedIn;
+                    self.set_login_status(status);
+                    self.store_key(key);
+                }
+                Ok(ServerToClient::LoginFail) => {
+                    let status = LoginStatus::NeedCredentials { fail: true };
+                    self.set_login_status(status);
+                }
                 Ok(ServerToClient::Fail(err)) => {}
                 Err(err) => {
                     log::error!("WS incoming error: {}", err);
@@ -111,18 +118,7 @@ impl Agent for Connector {
             Msg::WsStatus(status) => match status {
                 WebSocketStatus::Opened => {
                     self.set_connection_status(ConnectionStatus::Connected);
-                    match self.login_by.as_ref() {
-                        None => {
-                            let status = LoginStatus::NeedCredentials { fail: None };
-                            self.set_login_status(status);
-                        }
-                        Some(LoginBy::ByKey(key)) => {
-                            // TODO: Try to send Key
-                        }
-                        Some(LoginBy::ByCredentials(creds)) => {
-                            // TODO: Try to send Credentials
-                        }
-                    }
+                    self.login();
                 }
                 WebSocketStatus::Closed | WebSocketStatus::Error => {
                     self.set_connection_status(ConnectionStatus::Disconnected);
@@ -190,6 +186,9 @@ impl Connector {
                 }
             };
             self.ws.as_mut().unwrap().send(Json(&msg));
+        } else {
+            let status = LoginStatus::NeedCredentials { fail: false };
+            self.set_login_status(status);
         }
         // TODO: Schedule reconnection...
     }
