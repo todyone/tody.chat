@@ -2,10 +2,11 @@
 // when SQLite crates will support that.
 
 use crate::db::{Dba, User};
-use crate::types::{Password, Username};
+use crate::types::{Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
+use protocol::Key;
 use tokio::task::block_in_place as wait;
 
 wrapper!(Database for DatabaseActor);
@@ -30,6 +31,10 @@ impl Database {
 
     pub async fn find_user(&mut self, username: Username) -> Result<Option<User>, Error> {
         self.interaction(FindUser { username }).await
+    }
+
+    pub async fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), Error> {
+        self.interaction(CreateSession { user_id, key }).await
     }
 }
 
@@ -60,6 +65,15 @@ struct FindUser {
 
 impl Interaction for FindUser {
     type Output = Option<User>;
+}
+
+pub struct CreateSession {
+    user_id: Id,
+    key: Key,
+}
+
+impl Interaction for CreateSession {
+    type Output = ();
 }
 
 #[async_trait]
@@ -97,6 +111,13 @@ impl InteractionHandler<SetPassword> for DatabaseActor {
 impl InteractionHandler<FindUser> for DatabaseActor {
     async fn handle(&mut self, input: FindUser) -> Result<Option<User>, Error> {
         wait(|| self.dba().find_user(input.username)).map_err(Error::from)
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<CreateSession> for DatabaseActor {
+    async fn handle(&mut self, input: CreateSession) -> Result<(), Error> {
+        wait(|| self.dba().create_session(input.user_id, input.key)).map_err(Error::from)
     }
 }
 

@@ -138,6 +138,9 @@ impl LiveHandler {
                 match user {
                     Some(user) if user.password == creds.password => {
                         let key = generate_key();
+                        // TODO: Protect key
+                        self.db.create_session(user.id, key.clone()).await?;
+                        self.user_id = Some(user.id);
                         Ok(ServerToClient::LoggedIn { key })
                     }
                     Some(_) | None => {

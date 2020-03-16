@@ -1,4 +1,5 @@
 use crate::types::{Id, Password, Username};
+use protocol::Key;
 use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -112,9 +113,13 @@ impl Dba {
         Ok(())
     }
 
-    pub fn create_session(&mut self, user_id: Id) -> Result<(), DbaError> {
+    pub fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), DbaError> {
         log::trace!("Creating session for: {}", user_id);
-        todo!();
+        self.conn.execute(
+            "INSERT INTO sessions (user_id, key) VALUES (?, ?)",
+            params![&user_id, &key],
+        )?;
+        Ok(())
     }
 
     pub fn get_session(&mut self, user_id: Id) -> Result<Session, DbaError> {
@@ -188,6 +193,20 @@ mod tests {
         let mut dba = dba()?;
         let user = dba.find_user(username.clone())?;
         assert!(user.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn session_check() -> Result<(), DbaError> {
+        let username = Username::from("username");
+        let key = Key::from("key");
+        let mut dba = dba()?;
+        dba.create_user(username.clone())?;
+        let user = dba
+            .find_user(username.clone())?
+            .expect("user hadn't created");
+        dba.create_session(user.id, key)?;
+        // TODO: Find and check session
         Ok(())
     }
 }
