@@ -28,7 +28,7 @@ pub enum ConnectionStatus {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum LoginStatus {
     Unauthorized,
-    NeedCredentials { fail: bool },
+    NeedCredentials { fail: Option<String> },
     LoggedIn,
 }
 
@@ -107,7 +107,21 @@ impl Agent for Connector {
                     self.store_key(key);
                 }
                 Ok(ServerToClient::LoginFail) => {
-                    let status = LoginStatus::NeedCredentials { fail: true };
+                    let reason;
+                    // Reset login_by field
+                    match self.login_by.take() {
+                        Some(LoginBy::ByKey(_)) => {
+                            reason = "Session expired".to_string();
+                        }
+                        Some(LoginBy::ByCredentials(_)) => {
+                            reason = "Bad credentials".to_string();
+                        }
+                        None => {
+                            unreachable!("Login failed without login info.");
+                        }
+                    }
+                    let fail = Some(reason);
+                    let status = LoginStatus::NeedCredentials { fail };
                     self.set_login_status(status);
                 }
                 Ok(ServerToClient::Fail(err)) => {}
@@ -187,7 +201,7 @@ impl Connector {
             };
             self.ws.as_mut().unwrap().send(Json(&msg));
         } else {
-            let status = LoginStatus::NeedCredentials { fail: false };
+            let status = LoginStatus::NeedCredentials { fail: None };
             self.set_login_status(status);
         }
         // TODO: Schedule reconnection...
