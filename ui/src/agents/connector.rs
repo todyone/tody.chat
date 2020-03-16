@@ -145,6 +145,8 @@ impl Agent for Connector {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
             Action::SetCredentials(creds) => {
+                // Remove automatic login and wait for the new token
+                self.remove_key();
                 self.login_by = Some(LoginBy::ByCredentials(creds));
                 self.login();
                 // TODO: Set it on authorized
@@ -185,6 +187,10 @@ impl Connector {
     fn restore_key(&mut self) {
         let Json(key) = self.storage.restore(Self::KEY);
         self.login_by = key.ok().map(LoginBy::ByKey);
+    }
+
+    fn remove_key(&mut self) {
+        self.storage.remove(Self::KEY);
     }
 }
 

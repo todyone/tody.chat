@@ -7,6 +7,13 @@ pub struct Login {
     connector: Box<dyn Bridge<connector::Connector>>,
     username: String,
     password: String,
+    fail: Option<String>,
+}
+
+#[derive(Clone, PartialEq, Properties)]
+pub struct Props {
+    #[prop_or_default]
+    pub fail: Option<String>,
 }
 
 pub enum Msg {
@@ -18,9 +25,9 @@ pub enum Msg {
 
 impl Component for Login {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|n| Msg::FromConnector(n));
         let connector = connector::Connector::bridge(callback);
         Self {
@@ -28,6 +35,7 @@ impl Component for Login {
             connector,
             username: String::new(),
             password: String::new(),
+            fail: props.fail,
         }
     }
 
@@ -52,6 +60,11 @@ impl Component for Login {
         true
     }
 
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.fail = props.fail;
+        true
+    }
+
     fn view(&self) -> Html {
         html! {
             <div>
@@ -67,6 +80,9 @@ impl Component for Login {
                            value=self.password
                            placeholder="Password"
                            oninput=self.link.callback(|e: InputData| Msg::UpdatePassword(e.value)) />
+                </div>
+                <div>
+                    <p>{ self.fail.clone().unwrap_or_else(String::default) }</p>
                 </div>
                 <p onclick=self.link.callback(|_| Msg::SendCredentials)>{ "Login" }</p>
             </div>

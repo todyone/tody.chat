@@ -4,7 +4,7 @@ use yew::prelude::*;
 
 enum Scene {
     Splash,
-    Login,
+    Login { fail: Option<String> },
     Main,
 }
 
@@ -44,7 +44,7 @@ impl Component for App {
                         self.scene = Scene::Splash;
                     }
                     LoginStatus::NeedCredentials { fail } => {
-                        self.scene = Scene::Login;
+                        self.scene = Scene::Login { fail };
                     }
                     LoginStatus::LoggedIn => {
                         self.scene = Scene::Main;
@@ -62,9 +62,9 @@ impl Component for App {
                     <Splash />
                 }
             }
-            Scene::Login => {
+            Scene::Login { ref fail } => {
                 html! {
-                    <Login />
+                    <Login fail=fail />
                 }
             }
             Scene::Main => {
