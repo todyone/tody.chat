@@ -11,9 +11,44 @@ pub struct User {
     pub password: Password,
 }
 
+impl User {
+    const SELECT_BY_KEY: &'static str =
+        "SELECT id, username, password, email FROM users WHERE username = ?";
+}
+
+impl TryFrom<&Row<'_>> for User {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: row.get(0)?,
+            username: row.get(1)?,
+            password: row.get(2)?,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Session {
     pub id: Id,
+    pub key: Key,
+    pub user_id: Id,
+}
+
+impl Session {
+    const SELECT_BY_KEY: &'static str = "SELECT id, key, user_id FROM sessions WHERE key = ?";
+}
+
+impl TryFrom<&Row<'_>> for Session {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: row.get(0)?,
+            key: row.get(1)?,
+            user_id: row.get(2)?,
+        })
+    }
 }
 
 #[derive(Error, Debug)]
@@ -113,15 +148,6 @@ impl Dba {
         Ok(())
     }
 
-    pub fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), DbaError> {
-        log::trace!("Creating session for: {}", user_id);
-        self.conn.execute(
-            "INSERT INTO sessions (user_id, key) VALUES (?, ?)",
-            params![&user_id, &key],
-        )?;
-        Ok(())
-    }
-
     pub fn get_session(&mut self, user_id: Id) -> Result<Session, DbaError> {
         log::trace!("Getting session: {}", user_id);
         todo!();
@@ -138,29 +164,41 @@ impl Dba {
 
     pub fn find_user(&mut self, username: Username) -> Result<Option<User>, DbaError> {
         log::trace!("Getting user: {}", username);
-        let user = self.conn.query_row(
-            "SELECT id, username, password, email FROM users WHERE username = ?",
-            params![&username],
-            |row| User::try_from(row),
-        );
-        log::trace!("Find user result: {:?}", user);
-        match user {
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(err) => Err(DbaError::DbError(err)),
-            Ok(user) => Ok(Some(user)),
-        }
+        let value = self
+            .conn
+            .query_row(User::SELECT_BY_KEY, params![&username], |row| {
+                User::try_from(row)
+            });
+        log::trace!("Find user result: {:?}", value);
+        none_if_no_rows(value)
+    }
+
+    pub fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), DbaError> {
+        log::trace!("Creating session for: {}", user_id);
+        self.conn.execute(
+            "INSERT INTO sessions (user_id, key) VALUES (?, ?)",
+            params![&user_id, &key],
+        )?;
+        Ok(())
+    }
+
+    pub fn find_session(&mut self, key: Key) -> Result<Option<Session>, DbaError> {
+        log::trace!("Getting sessions: {}", key);
+        let value = self
+            .conn
+            .query_row(Session::SELECT_BY_KEY, params![&key], |row| {
+                Session::try_from(row)
+            });
+        log::trace!("Find sessions result: {:?}", value);
+        none_if_no_rows(value)
     }
 }
 
-impl TryFrom<&Row<'_>> for User {
-    type Error = rusqlite::Error;
-
-    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: row.get(0)?,
-            username: row.get(1)?,
-            password: row.get(2)?,
-        })
+fn none_if_no_rows<T>(res: Result<T, rusqlite::Error>) -> Result<Option<T>, DbaError> {
+    match res {
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(DbaError::DbError(err)),
+        Ok(t) => Ok(Some(t)),
     }
 }
 
@@ -205,8 +243,9 @@ mod tests {
         let user = dba
             .find_user(username.clone())?
             .expect("user hadn't created");
-        dba.create_session(user.id, key)?;
-        // TODO: Find and check session
+        dba.create_session(user.id, key.clone())?;
+        let session = dba.find_session(key.clone())?.expect("session not found");
+        assert_eq!(session.key, key);
         Ok(())
     }
 }
