@@ -148,11 +148,6 @@ impl Dba {
         Ok(())
     }
 
-    pub fn get_session(&mut self, user_id: Id) -> Result<Session, DbaError> {
-        log::trace!("Getting session: {}", user_id);
-        todo!();
-    }
-
     pub fn set_password(&mut self, username: Username, password: Password) -> Result<(), DbaError> {
         log::trace!("Setting password for user: {}", username);
         self.conn.execute(

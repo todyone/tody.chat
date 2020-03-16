@@ -1,7 +1,7 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
-use crate::db::{Dba, User};
+use crate::db::{Dba, Session, User};
 use crate::types::{Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -35,6 +35,10 @@ impl Database {
 
     pub async fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), Error> {
         self.interaction(CreateSession { user_id, key }).await
+    }
+
+    pub async fn find_session(&mut self, key: Key) -> Result<Option<Session>, Error> {
+        self.interaction(FindSession { key }).await
     }
 }
 
@@ -74,6 +78,14 @@ pub struct CreateSession {
 
 impl Interaction for CreateSession {
     type Output = ();
+}
+
+struct FindSession {
+    key: Key,
+}
+
+impl Interaction for FindSession {
+    type Output = Option<Session>;
 }
 
 #[async_trait]
@@ -118,6 +130,13 @@ impl InteractionHandler<FindUser> for DatabaseActor {
 impl InteractionHandler<CreateSession> for DatabaseActor {
     async fn handle(&mut self, input: CreateSession) -> Result<(), Error> {
         wait(|| self.dba().create_session(input.user_id, input.key)).map_err(Error::from)
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<FindSession> for DatabaseActor {
+    async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
+        wait(|| self.dba().find_session(input.key)).map_err(Error::from)
     }
 }
 

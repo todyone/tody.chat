@@ -150,7 +150,19 @@ impl LiveHandler {
                 }
             }
             ClientToServer::RestoreSession(key) => {
-                todo!();
+                let session = self.db.find_session(key.clone()).await?;
+                match session {
+                    // TODO: Check properly (with pretection)
+                    Some(session) if session.key == key => {
+                        // TODO: Update session (last_visit field)
+                        self.user_id = Some(session.user_id);
+                        Ok(ServerToClient::LoggedIn { key })
+                    }
+                    Some(_) | None => {
+                        // Don't share the reason
+                        Ok(ServerToClient::LoginFail)
+                    }
+                }
             }
         }
     }
