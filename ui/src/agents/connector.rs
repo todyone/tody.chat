@@ -1,5 +1,5 @@
 use anyhow::Error;
-use protocol::{ClientToServer, Credentials, Key, ServerToClient};
+use protocol::{ChannelUpdate, ClientToServer, Credentials, Key, LoginUpdate, ServerToClient};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -101,30 +101,13 @@ impl Agent for Connector {
         log::info!("Connector agent message: {:?}", msg);
         match msg {
             Msg::WsReady(res) => match res {
-                Ok(ServerToClient::LoggedIn { key }) => {
-                    let status = LoginStatus::LoggedIn;
-                    self.set_login_status(status);
-                    self.store_key(key);
+                Ok(ServerToClient::LoginUpdate(update)) => {
+                    self.login_update(update);
                 }
-                Ok(ServerToClient::LoginFail) => {
-                    let reason;
-                    // Reset login_by field
-                    match self.login_by.take() {
-                        Some(LoginBy::ByKey(_)) => {
-                            reason = "Session expired".to_string();
-                        }
-                        Some(LoginBy::ByCredentials(_)) => {
-                            reason = "Bad credentials".to_string();
-                        }
-                        None => {
-                            unreachable!("Login failed without login info.");
-                        }
-                    }
-                    let fail = Some(reason);
-                    let status = LoginStatus::NeedCredentials { fail };
-                    self.set_login_status(status);
+                Ok(ServerToClient::ChannelUpdate(update)) => {
+                    self.channel_update(update);
                 }
-                Ok(ServerToClient::Fail(err)) => {}
+                Ok(ServerToClient::Fail { reason: _ }) => {}
                 Err(err) => {
                     log::error!("WS incoming error: {}", err);
                 }
@@ -173,6 +156,40 @@ impl Agent for Connector {
         if self.subscribers.is_empty() {
             self.ws.take();
         }
+    }
+}
+
+impl Connector {
+    fn login_update(&mut self, update: LoginUpdate) {
+        match update {
+            LoginUpdate::LoggedIn { key } => {
+                let status = LoginStatus::LoggedIn;
+                self.set_login_status(status);
+                self.store_key(key);
+            }
+            LoginUpdate::LoginFail => {
+                let reason;
+                // Reset login_by field
+                match self.login_by.take() {
+                    Some(LoginBy::ByKey(_)) => {
+                        reason = "Session expired".to_string();
+                    }
+                    Some(LoginBy::ByCredentials(_)) => {
+                        reason = "Bad credentials".to_string();
+                    }
+                    None => {
+                        unreachable!("Login failed without login info.");
+                    }
+                }
+                let fail = Some(reason);
+                let status = LoginStatus::NeedCredentials { fail };
+                self.set_login_status(status);
+            }
+        }
+    }
+
+    fn channel_update(&mut self, update: ChannelUpdate) {
+        todo!();
     }
 }
 

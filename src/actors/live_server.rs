@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use headers::{ContentType, HeaderMapExt};
 use meio::{wrapper, Actor, Context};
-use protocol::{ClientToServer, ServerToClient};
+use protocol::{ClientToServer, LoginUpdate, ServerToClient};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place as wait;
@@ -112,10 +112,11 @@ impl LiveHandler {
             if msg.is_text() || msg.is_binary() {
                 let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
                 log::trace!("Received: {:?}", request);
-                let response = self
-                    .process_request(request)
-                    .await
-                    .unwrap_or_else(|err| ServerToClient::Fail(err.to_string()));
+                let response = self.process_request(request).await.unwrap_or_else(|err| {
+                    ServerToClient::Fail {
+                        reason: err.to_string(),
+                    }
+                });
                 let bytes = serde_json::to_vec(&response)?;
                 let message = Message::binary(bytes);
                 // TODO: Consider: track numbers instead of sequental processing
@@ -141,11 +142,13 @@ impl LiveHandler {
                         // TODO: Protect key
                         self.db.create_session(user.id, key.clone()).await?;
                         self.user_id = Some(user.id);
-                        Ok(ServerToClient::LoggedIn { key })
+                        let update = LoginUpdate::LoggedIn { key };
+                        Ok(ServerToClient::LoginUpdate(update))
                     }
                     Some(_) | None => {
                         // Don't share the reason
-                        Ok(ServerToClient::LoginFail)
+                        let update = LoginUpdate::LoginFail;
+                        Ok(ServerToClient::LoginUpdate(update))
                     }
                 }
             }
@@ -156,11 +159,13 @@ impl LiveHandler {
                     Some(session) if session.key == key => {
                         // TODO: Update session (last_visit field)
                         self.user_id = Some(session.user_id);
-                        Ok(ServerToClient::LoggedIn { key })
+                        let update = LoginUpdate::LoggedIn { key };
+                        Ok(ServerToClient::LoginUpdate(update))
                     }
                     Some(_) | None => {
                         // Don't share the reason
-                        Ok(ServerToClient::LoginFail)
+                        let update = LoginUpdate::LoginFail;
+                        Ok(ServerToClient::LoginUpdate(update))
                     }
                 }
             }

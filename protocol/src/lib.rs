@@ -20,9 +20,29 @@ pub enum ClientToServer {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum ServerToClient {
+    LoginUpdate(LoginUpdate),
+    ChannelUpdate(ChannelUpdate),
+    Fail {
+        reason: String,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum LoginUpdate {
     LoggedIn {
         key: Key,
     },
     LoginFail,
-    Fail(String),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum ChannelUpdate {
+    ChannelsList {
+        channels: Vec<ChannelInfo>,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ChannelInfo {
+    pub title: String,
 }
