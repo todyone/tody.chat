@@ -1,3 +1,11 @@
+//! This module contains an `Actor` that interacts
+//! with a database using `Dba` tools, but keeps
+//! data consistency. For example it creates a channel
+//! with a membership record for a specified user.
+//! But all user-specific actions like finding ids for
+//! a corresponding users performed by `ctrl` and `live`
+//! actors.
+
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 

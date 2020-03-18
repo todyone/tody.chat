@@ -190,10 +190,8 @@ impl Dba {
 
     pub fn create_channel(&mut self, name: String) -> Result<(), DbaError> {
         log::trace!("Creating channel named: {}", name);
-        self.conn.execute(
-            "INSERT INTO channels (name) VALUES (?)",
-            params![&name],
-        )?;
+        self.conn
+            .execute("INSERT INTO channels (name) VALUES (?)", params![&name])?;
         Ok(())
     }
 
