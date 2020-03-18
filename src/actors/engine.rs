@@ -5,6 +5,10 @@
 //! But all user-specific actions like finding ids for
 //! a corresponding users performed by `ctrl` and `live`
 //! actors.
+//!
+//! Also `EngineActor` has to notify other actors about
+//! changes. It's a central point of all changes applied to
+//! a database.
 
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
@@ -17,11 +21,11 @@ use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
 use protocol::Key;
 use tokio::task::block_in_place as wait;
 
-wrapper!(Database for DatabaseActor);
+wrapper!(Engine for EngineActor);
 
-impl Database {
+impl Engine {
     pub fn start() -> Self {
-        let actor = DatabaseActor { dba: None };
+        let actor = EngineActor { dba: None };
         meio::spawn(actor)
     }
 
@@ -50,7 +54,7 @@ impl Database {
     }
 }
 
-pub struct DatabaseActor {
+pub struct EngineActor {
     dba: Option<Dba>,
 }
 
@@ -96,12 +100,41 @@ impl Interaction for FindSession {
     type Output = Option<Session>;
 }
 
+pub struct CreateChannel {
+    /// Name of the channel.
+    name: String,
+    /// `Id` of channel's creator.
+    user_id: Id,
+}
+
+impl Interaction for CreateChannel {
+    type Output = (); // TODO: Return channel info? At least channel Id.
+}
+
+pub struct AddMember {
+    channel_id: Id,
+    user_id: Id,
+}
+
+impl Interaction for AddMember {
+    type Output = ();
+}
+
+pub struct RemoveMember {
+    channel_id: Id,
+    user_id: Id,
+}
+
+impl Interaction for RemoveMember {
+    type Output = ();
+}
+
 #[async_trait]
-impl Actor for DatabaseActor {
-    type Interface = Database;
+impl Actor for EngineActor {
+    type Interface = Engine;
 
     fn generic_name() -> &'static str {
-        "Database"
+        "Engine"
     }
 
     async fn initialize(&mut self, _address: Address<Self>) -> Result<(), Error> {
@@ -113,14 +146,14 @@ impl Actor for DatabaseActor {
 }
 
 #[async_trait]
-impl InteractionHandler<CreateUser> for DatabaseActor {
+impl InteractionHandler<CreateUser> for EngineActor {
     async fn handle(&mut self, input: CreateUser) -> Result<(), Error> {
         wait(|| self.dba().create_user(input.username)).map_err(Error::from)
     }
 }
 
 #[async_trait]
-impl InteractionHandler<SetPassword> for DatabaseActor {
+impl InteractionHandler<SetPassword> for EngineActor {
     async fn handle(&mut self, input: SetPassword) -> Result<(), Error> {
         // TODO: Protect password
         wait(|| self.dba().set_password(input.username, input.password)).map_err(Error::from)
@@ -128,28 +161,28 @@ impl InteractionHandler<SetPassword> for DatabaseActor {
 }
 
 #[async_trait]
-impl InteractionHandler<FindUser> for DatabaseActor {
+impl InteractionHandler<FindUser> for EngineActor {
     async fn handle(&mut self, input: FindUser) -> Result<Option<User>, Error> {
         wait(|| self.dba().find_user(input.username)).map_err(Error::from)
     }
 }
 
 #[async_trait]
-impl InteractionHandler<CreateSession> for DatabaseActor {
+impl InteractionHandler<CreateSession> for EngineActor {
     async fn handle(&mut self, input: CreateSession) -> Result<(), Error> {
         wait(|| self.dba().create_session(input.user_id, input.key)).map_err(Error::from)
     }
 }
 
 #[async_trait]
-impl InteractionHandler<FindSession> for DatabaseActor {
+impl InteractionHandler<FindSession> for EngineActor {
     async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
         wait(|| self.dba().find_session(input.key)).map_err(Error::from)
     }
 }
 
-/// DatabaseActor routines.
-impl DatabaseActor {
+/// EngineActor routines.
+impl EngineActor {
     fn dba(&mut self) -> &mut Dba {
         self.dba.as_mut().expect("DBA lost")
     }

@@ -1,4 +1,4 @@
-use crate::actors::Database;
+use crate::actors::Engine;
 use crate::control::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::{wrap, NetworkConnection};
 use anyhow::Error;
@@ -11,15 +11,15 @@ use tokio::net::{TcpListener, TcpStream};
 wrapper!(CtrlServer for CtrlServerActor);
 
 impl CtrlServer {
-    pub fn start(addr: SocketAddr, db: Database) -> Self {
-        let actor = CtrlServerActor { addr, db };
+    pub fn start(addr: SocketAddr, engine: Engine) -> Self {
+        let actor = CtrlServerActor { addr, engine };
         meio::spawn(actor)
     }
 }
 
 pub struct CtrlServerActor {
     addr: SocketAddr,
-    db: Database,
+    engine: Engine,
 }
 
 #[async_trait]
@@ -42,7 +42,7 @@ impl CtrlServerActor {
         let mut listener = TcpListener::bind(&self.addr).await?;
         let mut incoming = listener.incoming().fuse();
         while let Some(stream) = incoming.next().await.transpose()? {
-            CtrlHandler::upgrade(stream, self.db.clone());
+            CtrlHandler::upgrade(stream, self.engine.clone());
         }
         Ok(())
     }
@@ -50,17 +50,17 @@ impl CtrlServerActor {
 
 struct CtrlHandler {
     connection: NetworkConnection<ControllerProtocol>,
-    db: Database,
+    engine: Engine,
 }
 
 impl CtrlHandler {
-    fn upgrade(stream: TcpStream, db: Database) {
-        tokio::spawn(Self::handle(stream, db));
+    fn upgrade(stream: TcpStream, engine: Engine) {
+        tokio::spawn(Self::handle(stream, engine));
     }
 
-    async fn handle(stream: TcpStream, db: Database) {
+    async fn handle(stream: TcpStream, engine: Engine) {
         let connection = wrap(stream);
-        let this = Self { connection, db };
+        let this = Self { connection, engine };
         if let Err(err) = this.routine().await {
             log::error!("CtrlHandler error: {}", err);
         }
@@ -78,7 +78,7 @@ impl CtrlHandler {
                 ClientToController::CreateUser { username } => {
                     log::debug!("User created: {}", username);
                     let response = self
-                        .db
+                        .engine
                         .create_user(username.clone())
                         .await
                         .map(|_| ControllerToClient::UserCreated { username })
@@ -91,7 +91,7 @@ impl CtrlHandler {
                 ClientToController::SetPassword { username, password } => {
                     log::debug!("Password updated: {}", username);
                     let response = self
-                        .db
+                        .engine
                         .set_password(username.clone(), password)
                         .await
                         .map(|_| ControllerToClient::PasswordSet { username })

@@ -1,4 +1,4 @@
-use crate::actors::Database;
+use crate::actors::Engine;
 use crate::assets::{read_assets, Assets};
 use crate::generators::generate_key;
 use crate::types::Id;
@@ -21,15 +21,15 @@ use warp::{
 wrapper!(LiveServer for LiveServerActor);
 
 impl LiveServer {
-    pub fn start(addr: SocketAddr, db: Database) -> Self {
-        let actor = LiveServerActor { addr, db };
+    pub fn start(addr: SocketAddr, engine: Engine) -> Self {
+        let actor = LiveServerActor { addr, engine };
         meio::spawn(actor)
     }
 }
 
 pub struct LiveServerActor {
     addr: SocketAddr,
-    db: Database,
+    engine: Engine,
 }
 
 #[async_trait]
@@ -50,10 +50,10 @@ impl LiveServerActor {
     async fn run(&mut self, _: Context<Self>) -> Result<(), Error> {
         let asset_handler = AssetHandler::new().await?;
         let index = warp::path::end().map(|| warp::redirect(Uri::from_static("/index.html")));
-        let db = self.db.clone();
+        let engine = self.engine.clone();
         let live = warp::path("live")
             .and(warp::ws())
-            .map(move |ws| LiveHandler::upgrade(ws, db.clone()));
+            .map(move |ws| LiveHandler::upgrade(ws, engine.clone()));
         let assets = warp::path::tail().map(move |tail| asset_handler.handle(tail));
         let routes = index.or(live).or(assets);
         warp::serve(routes).run(self.addr).await;
@@ -89,17 +89,20 @@ impl AssetHandler {
 
 /// WebSocket handler for `LiveServerActor`.
 struct LiveHandler {
-    db: Database,
+    engine: Engine,
     user_id: Option<Id>,
 }
 
 impl LiveHandler {
-    fn upgrade(ws: Ws, db: Database) -> impl Reply {
-        ws.on_upgrade(|weboscket| Self::handle(weboscket, db))
+    fn upgrade(ws: Ws, engine: Engine) -> impl Reply {
+        ws.on_upgrade(|weboscket| Self::handle(weboscket, engine))
     }
 
-    async fn handle(websocket: WebSocket, db: Database) {
-        let this = Self { db, user_id: None };
+    async fn handle(websocket: WebSocket, engine: Engine) {
+        let this = Self {
+            engine,
+            user_id: None,
+        };
         if let Err(err) = this.routine(websocket).await {
             log::warn!("LiveHandler error: {}", err);
         }
@@ -135,12 +138,12 @@ impl LiveHandler {
     async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
         match request {
             ClientToServer::CreateSession(creds) => {
-                let user = self.db.find_user(creds.username).await?;
+                let user = self.engine.find_user(creds.username).await?;
                 match user {
                     Some(user) if user.password == creds.password => {
                         let key = generate_key();
                         // TODO: Protect key
-                        self.db.create_session(user.id, key.clone()).await?;
+                        self.engine.create_session(user.id, key.clone()).await?;
                         self.user_id = Some(user.id);
                         let update = LoginUpdate::LoggedIn { key };
                         Ok(ServerToClient::LoginUpdate(update))
@@ -153,7 +156,7 @@ impl LiveHandler {
                 }
             }
             ClientToServer::RestoreSession(key) => {
-                let session = self.db.find_session(key.clone()).await?;
+                let session = self.engine.find_session(key.clone()).await?;
                 match session {
                     // TODO: Check properly (with pretection)
                     Some(session) if session.key == key => {
