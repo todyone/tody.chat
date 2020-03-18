@@ -9,6 +9,10 @@
 //! Also `EngineActor` has to notify other actors about
 //! changes. It's a central point of all changes applied to
 //! a database.
+//!
+//! In the future `EngineActor` will wrap accompanied requests
+//! to transactions. That's another reason why is better to keep
+//! complex requests with a single instance.
 
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
@@ -22,6 +26,7 @@ use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
 use protocol::Key;
 use tokio::task::block_in_place as wait;
 
+/// `Engine` provides business logic methods to manage data.
 wrapper!(Engine for EngineActor);
 
 impl Engine {
@@ -39,7 +44,8 @@ impl Engine {
         username: Username,
         password: Password,
     ) -> Result<(), Error> {
-        self.interaction(SetPassword { username, password }).await
+        self.interaction(UpdatePassword { username, password })
+            .await
     }
 
     pub async fn find_user(&mut self, username: Username) -> Result<Option<User>, Error> {
@@ -75,12 +81,12 @@ impl Interaction for CreateUser {
     type Output = ();
 }
 
-struct SetPassword {
+struct UpdatePassword {
     username: Username,
     password: Password,
 }
 
-impl Interaction for SetPassword {
+impl Interaction for UpdatePassword {
     type Output = ();
 }
 
@@ -162,8 +168,8 @@ impl InteractionHandler<CreateUser> for EngineActor {
 }
 
 #[async_trait]
-impl InteractionHandler<SetPassword> for EngineActor {
-    async fn handle(&mut self, input: SetPassword) -> Result<(), Error> {
+impl InteractionHandler<UpdatePassword> for EngineActor {
+    async fn handle(&mut self, input: UpdatePassword) -> Result<(), Error> {
         // TODO: Protect password
         wait(|| self.dba().set_password(input.username, input.password)).map_err(Error::from)
     }
