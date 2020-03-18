@@ -14,6 +14,7 @@
 // when SQLite crates will support that.
 
 use crate::db::{Dba, Session, User};
+use crate::generators::generate_key;
 use crate::types::{Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
@@ -45,11 +46,19 @@ impl Engine {
         self.interaction(FindUser { username }).await
     }
 
-    pub async fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), Error> {
-        self.interaction(CreateSession { user_id, key }).await
+    pub async fn create_session(&mut self, user_id: Id) -> Result<Key, Error> {
+        let key = generate_key();
+        // TODO: Protect key here
+        self.interaction(CreateSession {
+            user_id,
+            key: key.clone(),
+        })
+        .await
+        .map(|_| key)
     }
 
     pub async fn find_session(&mut self, key: Key) -> Result<Option<Session>, Error> {
+        // TODO: Check key here
         self.interaction(FindSession { key }).await
     }
 }

@@ -1,6 +1,5 @@
 use crate::actors::Engine;
 use crate::assets::{read_assets, Assets};
-use crate::generators::generate_key;
 use crate::types::Id;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -141,9 +140,7 @@ impl LiveHandler {
                 let user = self.engine.find_user(creds.username).await?;
                 match user {
                     Some(user) if user.password == creds.password => {
-                        let key = generate_key();
-                        // TODO: Protect key
-                        self.engine.create_session(user.id, key.clone()).await?;
+                        let key = self.engine.create_session(user.id).await?;
                         self.user_id = Some(user.id);
                         let update = LoginUpdate::LoggedIn { key };
                         Ok(ServerToClient::LoginUpdate(update))
