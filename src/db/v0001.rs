@@ -187,6 +187,24 @@ impl Dba {
         log::trace!("Find sessions result: {:?}", value);
         none_if_no_rows(value)
     }
+
+    pub fn create_channel(&mut self, name: String) -> Result<(), DbaError> {
+        log::trace!("Creating channel named: {}", name);
+        self.conn.execute(
+            "INSERT INTO channels (name) VALUES (?)",
+            params![&name],
+        )?;
+        Ok(())
+    }
+
+    pub fn add_member(&mut self, channel_id: Id, user_id: Id) -> Result<(), DbaError> {
+        log::trace!("Add user {} to channel {}", user_id, channel_id);
+        self.conn.execute(
+            "INSERT INTO members (channel_id, user_id) VALUES (?, ?)",
+            params![&channel_id, user_id],
+        )?;
+        Ok(())
+    }
 }
 
 fn none_if_no_rows<T>(res: Result<T, rusqlite::Error>) -> Result<Option<T>, DbaError> {
