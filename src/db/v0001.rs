@@ -63,7 +63,8 @@ pub struct Dba {
 
 impl Dba {
     pub fn open() -> Result<Self, DbaError> {
-        let conn = Connection::open_in_memory()?;
+        let path = "data/v0001.db3";
+        let conn = Connection::open(path)?;
         Ok(Self { conn })
     }
 
@@ -84,7 +85,7 @@ impl Dba {
     fn create_users_table(&mut self) -> Result<(), DbaError> {
         log::debug!("Creating users table");
         self.conn.execute(
-            "CREATE TABLE users (
+            "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
                 password TEXT,
@@ -98,7 +99,7 @@ impl Dba {
     fn create_sessions_table(&mut self) -> Result<(), DbaError> {
         log::debug!("Creating sessions table");
         self.conn.execute(
-            "CREATE TABLE sessions (
+            "CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY,
                 key TEXT NOT NULL UNIQUE,
                 user_id INTEGER NOT NULL,
@@ -113,7 +114,7 @@ impl Dba {
     fn create_channels_table(&mut self) -> Result<(), DbaError> {
         log::debug!("Creating channels table");
         self.conn.execute(
-            "CREATE TABLE channels (
+            "CREATE TABLE IF NOT EXISTS channels (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL
             )",
@@ -125,7 +126,7 @@ impl Dba {
     fn create_members_table(&mut self) -> Result<(), DbaError> {
         log::debug!("Creating members table");
         self.conn.execute(
-            "CREATE TABLE members (
+            "CREATE TABLE IF NOT EXISTS members (
                 id INTEGER PRIMARY KEY,
                 channel_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
