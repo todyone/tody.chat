@@ -119,6 +119,7 @@ impl Interaction for FindSession {
     type Output = Session;
 }
 
+#[derive(Debug)]
 pub struct CreateChannel {
     /// Name of the channel.
     channel: String,
@@ -205,6 +206,7 @@ impl InteractionHandler<CreateChannel> for EngineActor {
     async fn handle(&mut self, input: CreateChannel) -> Result<(), Error> {
         // TODO: Use TRANSACTION here
         wait(|| {
+            log::trace!("Creating channel: {:?}", input);
             self.dba().create_channel(input.channel.clone())?;
             let channel = self.dba().get_channel(input.channel)?;
             self.dba().add_member(channel.id, input.user_id)?;

@@ -21,7 +21,9 @@ impl Client {
                 }
             },
             Some(SubCommand::Channel(channel_command)) => match channel_command.subcmd {
-                ChannelSubCommand::Create(cmd) => {}
+                ChannelSubCommand::Create(cmd) => {
+                    controller.create_channel(cmd.channel, cmd.username).await?;
+                }
             },
             _ => {
                 unreachable!();
