@@ -48,7 +48,7 @@ impl Engine {
             .await
     }
 
-    pub async fn find_user(&mut self, username: Username) -> Result<Option<User>, Error> {
+    pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
         self.interaction(FindUser { username }).await
     }
 
@@ -63,7 +63,7 @@ impl Engine {
         .map(|_| key)
     }
 
-    pub async fn find_session(&mut self, key: Key) -> Result<Option<Session>, Error> {
+    pub async fn get_session(&mut self, key: Key) -> Result<Session, Error> {
         // TODO: Check key here
         self.interaction(FindSession { key }).await
     }
@@ -99,7 +99,7 @@ struct FindUser {
 }
 
 impl Interaction for FindUser {
-    type Output = Option<User>;
+    type Output = User;
 }
 
 pub struct CreateSession {
@@ -116,7 +116,7 @@ struct FindSession {
 }
 
 impl Interaction for FindSession {
-    type Output = Option<Session>;
+    type Output = Session;
 }
 
 pub struct CreateChannel {
@@ -181,8 +181,8 @@ impl InteractionHandler<UpdatePassword> for EngineActor {
 
 #[async_trait]
 impl InteractionHandler<FindUser> for EngineActor {
-    async fn handle(&mut self, input: FindUser) -> Result<Option<User>, Error> {
-        wait(|| self.dba().find_user(input.username)).map_err(Error::from)
+    async fn handle(&mut self, input: FindUser) -> Result<User, Error> {
+        wait(|| self.dba().get_user(input.username)).map_err(Error::from)
     }
 }
 
@@ -195,8 +195,8 @@ impl InteractionHandler<CreateSession> for EngineActor {
 
 #[async_trait]
 impl InteractionHandler<FindSession> for EngineActor {
-    async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
-        wait(|| self.dba().find_session(input.key)).map_err(Error::from)
+    async fn handle(&mut self, input: FindSession) -> Result<Session, Error> {
+        wait(|| self.dba().get_session(input.key)).map_err(Error::from)
     }
 }
 
@@ -206,10 +206,7 @@ impl InteractionHandler<CreateChannel> for EngineActor {
         // TODO: Use TRANSACTION here
         wait(|| {
             self.dba().create_channel(input.channel.clone())?;
-            let channel = self
-                .dba()
-                .find_channel(input.channel)?
-                .ok_or(DbaError::NotFound)?;
+            let channel = self.dba().get_channel(input.channel)?;
             self.dba().add_member(channel.id, input.user_id)?;
             Ok(())
         })

@@ -76,8 +76,6 @@ impl TryFrom<&Row<'_>> for ChannelRecord {
 pub enum DbaError {
     #[error("db error: {0}")]
     DbError(#[from] rusqlite::Error),
-    #[error("not found")]
-    NotFound,
 }
 
 pub struct Dba {
@@ -188,7 +186,7 @@ impl Dba {
         Ok(())
     }
 
-    pub fn find_user(&mut self, name: Username) -> Result<Option<User>, DbaError> {
+    pub fn get_user(&mut self, name: Username) -> Result<User, DbaError> {
         log::trace!("Getting user: {}", name);
         let value = self
             .conn
@@ -196,7 +194,7 @@ impl Dba {
                 User::try_from(row)
             });
         log::trace!("Find user result: {:?}", value);
-        none_if_no_rows(value)
+        value.map_err(DbaError::from)
     }
 
     pub fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), DbaError> {
@@ -208,7 +206,7 @@ impl Dba {
         Ok(())
     }
 
-    pub fn find_session(&mut self, key: Key) -> Result<Option<Session>, DbaError> {
+    pub fn get_session(&mut self, key: Key) -> Result<Session, DbaError> {
         log::trace!("Getting sessions: {}", key);
         let value = self
             .conn
@@ -216,7 +214,7 @@ impl Dba {
                 Session::try_from(row)
             });
         log::trace!("Find sessions result: {:?}", value);
-        none_if_no_rows(value)
+        value.map_err(DbaError::from)
     }
 
     pub fn create_channel(&mut self, name: Channel) -> Result<(), DbaError> {
@@ -226,7 +224,7 @@ impl Dba {
         Ok(())
     }
 
-    pub fn find_channel(&mut self, name: Channel) -> Result<Option<ChannelRecord>, DbaError> {
+    pub fn get_channel(&mut self, name: Channel) -> Result<ChannelRecord, DbaError> {
         log::trace!("Getting channel: {}", name);
         let value = self
             .conn
@@ -234,7 +232,7 @@ impl Dba {
                 ChannelRecord::try_from(row)
             });
         log::trace!("Find channel result: {:?}", value);
-        none_if_no_rows(value)
+        value.map_err(DbaError::from)
     }
 
     pub fn add_member(&mut self, channel_id: Id, user_id: Id) -> Result<(), DbaError> {
@@ -244,14 +242,6 @@ impl Dba {
             params![&channel_id, user_id],
         )?;
         Ok(())
-    }
-}
-
-fn none_if_no_rows<T>(res: Result<T, rusqlite::Error>) -> Result<Option<T>, DbaError> {
-    match res {
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(err) => Err(DbaError::DbError(err)),
-        Ok(t) => Ok(Some(t)),
     }
 }
 
@@ -291,20 +281,14 @@ mod tests {
             // TODO: Generate random name later
             let username = Username::from("username");
             self.dba.create_user(username.clone())?;
-            let record = self
-                .dba
-                .find_user(username.clone())?
-                .ok_or(DbaError::NotFound)?;
+            let record = self.dba.get_user(username.clone())?;
             Ok(record.id)
         }
 
         fn create_test_channel(&mut self) -> Result<Id, DbaError> {
             let channel = Channel::from("channel-1");
             self.dba.create_channel(channel.clone())?;
-            let record = self
-                .dba
-                .find_channel(channel.clone())?
-                .ok_or(DbaError::NotFound)?;
+            let record = self.dba.get_channel(channel.clone())?;
             Ok(record.id)
         }
     }
@@ -322,7 +306,7 @@ mod tests {
         let mut dba = dba()?;
         dba.create_user(username.clone())?;
         dba.set_password(username.clone(), password.clone())?;
-        let user = dba.find_user(username.clone())?.expect("user not found");
+        let user = dba.get_user(username.clone())?.expect("user not found");
         assert_eq!(user.username, username);
         assert_eq!(user.password, password);
         Ok(())
@@ -332,7 +316,7 @@ mod tests {
     fn user_not_exists() -> Result<(), DbaError> {
         let username = Username::from("username");
         let mut dba = dba()?;
-        let user = dba.find_user(username.clone())?;
+        let user = dba.get_user(username.clone())?;
         assert!(user.is_none());
         Ok(())
     }
@@ -344,10 +328,10 @@ mod tests {
         let mut dba = dba()?;
         dba.create_user(username.clone())?;
         let user = dba
-            .find_user(username.clone())?
+            .get_user(username.clone())?
             .expect("user hadn't created");
         dba.create_session(user.id, key.clone())?;
-        let session = dba.find_session(key.clone())?.expect("session not found");
+        let session = dba.get_session(key.clone())?.expect("session not found");
         assert_eq!(session.key, key);
         Ok(())
     }
