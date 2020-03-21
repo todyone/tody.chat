@@ -35,8 +35,12 @@ impl Engine {
         meio::spawn(actor)
     }
 
-    pub async fn create_user(&mut self, username: Username) -> Result<(), Error> {
-        self.interaction(CreateUser { username }).await
+    pub async fn create_user(
+        &mut self,
+        username: Username,
+        password: Password,
+    ) -> Result<(), Error> {
+        self.interaction(CreateUser { username, password }).await
     }
 
     pub async fn set_password(
@@ -77,14 +81,17 @@ pub struct EngineActor {
     dba: Option<Dba>,
 }
 
+#[derive(Debug)]
 pub struct CreateUser {
     username: Username,
+    password: Password,
 }
 
 impl Interaction for CreateUser {
     type Output = ();
 }
 
+#[derive(Debug)]
 struct UpdatePassword {
     username: Username,
     password: Password,
@@ -94,6 +101,7 @@ impl Interaction for UpdatePassword {
     type Output = ();
 }
 
+#[derive(Debug)]
 struct FindUser {
     username: Username,
 }
@@ -102,6 +110,7 @@ impl Interaction for FindUser {
     type Output = User;
 }
 
+#[derive(Debug)]
 pub struct CreateSession {
     user_id: Id,
     key: Key,
@@ -111,6 +120,7 @@ impl Interaction for CreateSession {
     type Output = ();
 }
 
+#[derive(Debug)]
 struct FindSession {
     key: Key,
 }
@@ -131,6 +141,7 @@ impl Interaction for CreateChannel {
     type Output = (); // TODO: Return channel info? At least channel Id.
 }
 
+#[derive(Debug)]
 pub struct AddMember {
     channel_id: Id,
     user_id: Id,
@@ -140,6 +151,7 @@ impl Interaction for AddMember {
     type Output = ();
 }
 
+#[derive(Debug)]
 pub struct RemoveMember {
     channel_id: Id,
     user_id: Id,
@@ -168,7 +180,15 @@ impl Actor for EngineActor {
 #[async_trait]
 impl InteractionHandler<CreateUser> for EngineActor {
     async fn handle(&mut self, input: CreateUser) -> Result<(), Error> {
-        wait(|| self.dba().create_user(input.username)).map_err(Error::from)
+        wait(|| -> Result<(), DbaError> {
+            log::trace!("Creating user: {:?}", input);
+            // TODO: User RETURNING id possible?
+            self.dba().create_user(input.username.clone())?;
+            let user = self.dba().get_user(input.username)?;
+            self.dba().set_password(user.id, input.password)?;
+            Ok(())
+        })
+        .map_err(Error::from)
     }
 }
 
@@ -176,7 +196,13 @@ impl InteractionHandler<CreateUser> for EngineActor {
 impl InteractionHandler<UpdatePassword> for EngineActor {
     async fn handle(&mut self, input: UpdatePassword) -> Result<(), Error> {
         // TODO: Protect password
-        wait(|| self.dba().set_password(input.username, input.password)).map_err(Error::from)
+        wait(|| -> Result<(), DbaError> {
+            log::trace!("Updating password: {:?}", input);
+            let user = self.dba().get_user(input.username)?;
+            self.dba().set_password(user.id, input.password)?;
+            Ok(())
+        })
+        .map_err(Error::from)
     }
 }
 

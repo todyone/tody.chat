@@ -16,8 +16,7 @@ impl Client {
         match self.opts.subcmd {
             Some(SubCommand::User(user_command)) => match user_command.subcmd {
                 UserSubCommand::Create(cmd) => {
-                    controller.create_user(cmd.username.clone()).await?;
-                    controller.set_password(cmd.username, cmd.password).await?;
+                    controller.create_user(cmd.username, cmd.password).await?;
                 }
             },
             Some(SubCommand::Channel(channel_command)) => match channel_command.subcmd {

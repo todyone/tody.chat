@@ -75,11 +75,11 @@ impl CtrlHandler {
         while let Some(msg) = self.connection.next().await.transpose()? {
             log::trace!("Ctrl message: {:?}", msg);
             match msg {
-                ClientToController::CreateUser { username } => {
+                ClientToController::CreateUser { username, password } => {
                     log::debug!("Creating user: {}", username);
                     let response = self
                         .engine
-                        .create_user(username.clone())
+                        .create_user(username.clone(), password)
                         .await
                         .map(|_| ControllerToClient::UserCreated { username })
                         .unwrap_or_else(|err| {
@@ -88,13 +88,13 @@ impl CtrlHandler {
                         });
                     self.send(response).await?;
                 }
-                ClientToController::SetPassword { username, password } => {
+                ClientToController::UpdatePassword { username, password } => {
                     log::debug!("Updating password: {}", username);
                     let response = self
                         .engine
                         .set_password(username.clone(), password)
                         .await
-                        .map(|_| ControllerToClient::PasswordSet { username })
+                        .map(|_| ControllerToClient::PasswordUpdated { username })
                         .unwrap_or_else(|err| {
                             log::error!("Can't set new password: {}", err);
                             ControllerToClient::Fail(err.to_string())

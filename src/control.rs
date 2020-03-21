@@ -15,8 +15,9 @@ pub type ControllerProtocol = ProtocolCodec<ControllerToClient, ClientToControll
 pub enum ClientToController {
     CreateUser {
         username: Username,
+        password: Password,
     },
-    SetPassword {
+    UpdatePassword {
         username: Username,
         password: Password,
     },
@@ -29,7 +30,7 @@ pub enum ClientToController {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ControllerToClient {
     UserCreated { username: Username },
-    PasswordSet { username: Username },
+    PasswordUpdated { username: Username },
     ChannelCreated { channel: Channel },
     Fail(String),
 }
@@ -75,24 +76,28 @@ impl Controller {
         .ok_or(ControllerError::NoResponse)
     }
 
-    pub async fn create_user(&mut self, username: Username) -> Result<(), ControllerError> {
+    pub async fn create_user(
+        &mut self,
+        username: Username,
+        password: Password,
+    ) -> Result<(), ControllerError> {
         let expected = username.clone();
-        let msg = ClientToController::CreateUser { username };
+        let msg = ClientToController::CreateUser { username, password };
         match self.interact(msg).await? {
             ControllerToClient::UserCreated { username } if username == expected => Ok(()),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }
 
-    pub async fn set_password(
+    pub async fn update_password(
         &mut self,
         username: Username,
         password: Password,
     ) -> Result<(), ControllerError> {
         let expected = username.clone();
-        let msg = ClientToController::SetPassword { username, password };
+        let msg = ClientToController::UpdatePassword { username, password };
         match self.interact(msg).await? {
-            ControllerToClient::PasswordSet { username } if username == expected => Ok(()),
+            ControllerToClient::PasswordUpdated { username } if username == expected => Ok(()),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }

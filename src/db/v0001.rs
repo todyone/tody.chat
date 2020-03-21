@@ -177,11 +177,11 @@ impl Dba {
         Ok(())
     }
 
-    pub fn set_password(&mut self, username: Username, password: Password) -> Result<(), DbaError> {
-        log::trace!("Setting password for user: {}", username);
+    pub fn set_password(&mut self, user_id: Id, password: Password) -> Result<(), DbaError> {
+        log::trace!("Setting password for user: {}", user_id);
         self.conn.execute(
-            "UPDATE users SET password = ? WHERE username = ?",
-            params![&password, &username],
+            "UPDATE users SET password = ? WHERE id = ?",
+            params![&password, &user_id],
         )?;
         Ok(())
     }
@@ -248,7 +248,6 @@ impl Dba {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::anyhow;
     use std::ops::{Deref, DerefMut};
 
     struct TestDba {
@@ -277,12 +276,12 @@ mod tests {
             Ok(this)
         }
 
-        fn create_test_user(&mut self) -> Result<Id, DbaError> {
+        fn create_test_user(&mut self) -> Result<User, DbaError> {
             // TODO: Generate random name later
             let username = Username::from("username");
             self.dba.create_user(username.clone())?;
             let record = self.dba.get_user(username.clone())?;
-            Ok(record.id)
+            Ok(record)
         }
 
         fn create_test_channel(&mut self) -> Result<Id, DbaError> {
@@ -301,14 +300,13 @@ mod tests {
 
     #[test]
     fn user_creation() -> Result<(), DbaError> {
-        let username = Username::from("username");
+        let mut dba = TestDba::new()?;
+        let user = dba.create_test_user()?;
         let password = Password::from("password");
-        let mut dba = dba()?;
-        dba.create_user(username.clone())?;
-        dba.set_password(username.clone(), password.clone())?;
-        let user = dba.get_user(username.clone())?.expect("user not found");
-        assert_eq!(user.username, username);
-        assert_eq!(user.password, password);
+        dba.set_password(user.id, password.clone())?;
+        let user_changed = dba.get_user(user.username.clone())?;
+        assert_eq!(user_changed.username, user.username);
+        assert_eq!(user_changed.password, password);
         Ok(())
     }
 
@@ -316,8 +314,8 @@ mod tests {
     fn user_not_exists() -> Result<(), DbaError> {
         let username = Username::from("username");
         let mut dba = dba()?;
-        let user = dba.get_user(username.clone())?;
-        assert!(user.is_none());
+        let user = dba.get_user(username.clone());
+        assert!(user.is_err());
         Ok(())
     }
 
@@ -327,11 +325,9 @@ mod tests {
         let key = Key::from("key");
         let mut dba = dba()?;
         dba.create_user(username.clone())?;
-        let user = dba
-            .get_user(username.clone())?
-            .expect("user hadn't created");
+        let user = dba.get_user(username.clone())?;
         dba.create_session(user.id, key.clone())?;
-        let session = dba.get_session(key.clone())?.expect("session not found");
+        let session = dba.get_session(key.clone())?;
         assert_eq!(session.key, key);
         Ok(())
     }
@@ -347,11 +343,11 @@ mod tests {
     #[test]
     fn channel_membership() -> Result<(), DbaError> {
         let mut dba = TestDba::new()?;
-        let user_id = dba.create_test_user()?;
+        let user = dba.create_test_user()?;
         let channel_id = dba.create_test_channel()?;
         // TODO: Replace Id with separated ChannelId and UserId.
         // It's possible to confuse them today.
-        dba.add_member(channel_id, user_id)?;
+        dba.add_member(channel_id, user.id)?;
         // TODO: Check member.
         Ok(())
     }
