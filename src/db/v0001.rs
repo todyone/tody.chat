@@ -1,4 +1,4 @@
-use crate::types::{Id, Password, Username};
+use crate::types::{Channel, Id, Password, Username};
 use protocol::Key;
 use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;
@@ -62,9 +62,16 @@ pub struct Dba {
 }
 
 impl Dba {
+    #[cfg(not(test))]
     pub fn open() -> Result<Self, DbaError> {
         let path = "data/v0001.db3";
         let conn = Connection::open(path)?;
+        Ok(Self { conn })
+    }
+
+    #[cfg(test)]
+    pub fn open() -> Result<Self, DbaError> {
+        let conn = Connection::open_in_memory()?;
         Ok(Self { conn })
     }
 
@@ -217,6 +224,43 @@ fn none_if_no_rows<T>(res: Result<T, rusqlite::Error>) -> Result<Option<T>, DbaE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ops::{Deref, DerefMut};
+
+    struct TestDba {
+        dba: Dba,
+        username: Username,
+    }
+
+    impl Deref for TestDba {
+        type Target = Dba;
+
+        fn deref(&self) -> &Self::Target {
+            &self.dba
+        }
+    }
+
+    impl DerefMut for TestDba {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.dba
+        }
+    }
+
+    impl TestDba {
+        fn new() -> Result<Self, DbaError> {
+            let mut dba = Dba::open()?;
+            dba.initialize()?;
+            let this = Self {
+                dba,
+                username: Username::from("username"),
+            };
+            Ok(this)
+        }
+
+        fn create_test_user(&mut self) -> Result<(), DbaError> {
+            self.dba.create_user(self.username.clone())?;
+            Ok(())
+        }
+    }
 
     fn dba() -> Result<Dba, DbaError> {
         let mut dba = Dba::open()?;
@@ -258,6 +302,23 @@ mod tests {
         dba.create_session(user.id, key.clone())?;
         let session = dba.find_session(key.clone())?.expect("session not found");
         assert_eq!(session.key, key);
+        Ok(())
+    }
+
+    #[test]
+    fn channel_check() -> Result<(), DbaError> {
+        let channel = Channel::from("channel-1");
+        let mut dba = TestDba::new()?;
+        dba.create_channel(channel)?;
+        Ok(())
+    }
+
+    #[test]
+    fn channel_membership() -> Result<(), DbaError> {
+        let channel = Channel::from("channel-1");
+        let mut dba = TestDba::new()?;
+        dba.create_channel(channel)?;
+        dba.create_test_user()?;
         Ok(())
     }
 }

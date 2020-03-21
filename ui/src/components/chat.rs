@@ -1,3 +1,4 @@
+use crate::components::CreateChannel;
 use yew::prelude::*;
 
 enum Scene {
@@ -74,7 +75,7 @@ impl Chat {
             }
             Scene::AddChannel => {
                 html! {
-                    <p>{ "Add Channel" }</p>
+                    <CreateChannel />
                 }
             }
         }
