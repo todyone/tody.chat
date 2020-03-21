@@ -76,7 +76,7 @@ impl CtrlHandler {
             log::trace!("Ctrl message: {:?}", msg);
             match msg {
                 ClientToController::CreateUser { username } => {
-                    log::debug!("User created: {}", username);
+                    log::debug!("Creating user: {}", username);
                     let response = self
                         .engine
                         .create_user(username.clone())
@@ -89,7 +89,7 @@ impl CtrlHandler {
                     self.send(response).await?;
                 }
                 ClientToController::SetPassword { username, password } => {
-                    log::debug!("Password updated: {}", username);
+                    log::debug!("Updating password: {}", username);
                     let response = self
                         .engine
                         .set_password(username.clone(), password)
@@ -99,6 +99,36 @@ impl CtrlHandler {
                             log::error!("Can't set new password: {}", err);
                             ControllerToClient::Fail(err.to_string())
                         });
+                    self.send(response).await?;
+                }
+                ClientToController::CreateChannel { channel, username } => {
+                    let user = self.engine.find_user(username.clone()).await;
+                    // TODO: Refactor that match part
+                    let response = {
+                        match user {
+                            Ok(Some(user)) => {
+                                log::debug!("Creating channel: {}", channel);
+                                let response = self
+                                    .engine
+                                    .create_channel(channel.clone(), user.id)
+                                    .await
+                                    .map(|_| ControllerToClient::ChannelCreated { channel })
+                                    .unwrap_or_else(|err| {
+                                        log::error!("Can't create a channel: {}", err);
+                                        ControllerToClient::Fail(err.to_string())
+                                    });
+                                response
+                            }
+                            Ok(None) => {
+                                log::error!("Can't find user: {}", username);
+                                ControllerToClient::Fail("user doesn't exists".into())
+                            }
+                            Err(err) => {
+                                log::error!("Can't find user: {}", err);
+                                ControllerToClient::Fail(err.to_string())
+                            }
+                        }
+                    };
                     self.send(response).await?;
                 }
             }

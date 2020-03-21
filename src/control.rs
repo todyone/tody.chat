@@ -1,5 +1,5 @@
 use crate::network::{wrap, CodecError, NetworkConnection, ProtocolCodec};
-use crate::types::{Password, Username};
+use crate::types::{Channel, Password, Username};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -20,12 +20,17 @@ pub enum ClientToController {
         username: Username,
         password: Password,
     },
+    CreateChannel {
+        channel: Channel,
+        username: Username,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ControllerToClient {
     UserCreated { username: Username },
     PasswordSet { username: Username },
+    ChannelCreated { channel: Channel },
     Fail(String),
 }
 
@@ -88,6 +93,19 @@ impl Controller {
         let msg = ClientToController::SetPassword { username, password };
         match self.interact(msg).await? {
             ControllerToClient::PasswordSet { username } if username == expected => Ok(()),
+            other => Err(ControllerError::UnexpectedResponse(other)),
+        }
+    }
+
+    pub async fn create_channel(
+        &mut self,
+        channel: Channel,
+        username: Username,
+    ) -> Result<(), ControllerError> {
+        let expected = channel.clone();
+        let msg = ClientToController::CreateChannel { channel, username };
+        match self.interact(msg).await? {
+            ControllerToClient::ChannelCreated { channel } if channel == expected => Ok(()),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }

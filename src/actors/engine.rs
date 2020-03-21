@@ -17,9 +17,9 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
-use crate::db::{Dba, Session, User};
+use crate::db::{Dba, DbaError, Session, User};
 use crate::generators::generate_key;
-use crate::types::{Id, Password, Username};
+use crate::types::{Channel, Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
@@ -66,6 +66,10 @@ impl Engine {
     pub async fn find_session(&mut self, key: Key) -> Result<Option<Session>, Error> {
         // TODO: Check key here
         self.interaction(FindSession { key }).await
+    }
+
+    pub async fn create_channel(&mut self, channel: Channel, user_id: Id) -> Result<(), Error> {
+        self.interaction(CreateChannel { channel, user_id }).await
     }
 }
 
@@ -117,7 +121,7 @@ impl Interaction for FindSession {
 
 pub struct CreateChannel {
     /// Name of the channel.
-    name: String,
+    channel: String,
     /// `Id` of channel's creator.
     user_id: Id,
 }
@@ -193,6 +197,22 @@ impl InteractionHandler<CreateSession> for EngineActor {
 impl InteractionHandler<FindSession> for EngineActor {
     async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
         wait(|| self.dba().find_session(input.key)).map_err(Error::from)
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<CreateChannel> for EngineActor {
+    async fn handle(&mut self, input: CreateChannel) -> Result<(), Error> {
+        // TODO: Use TRANSACTION here
+        wait(|| {
+            self.dba().create_channel(input.channel.clone())?;
+            let channel = self
+                .dba()
+                .find_channel(input.channel)?
+                .ok_or(DbaError::NotFound)?;
+            self.dba().add_member(channel.id, input.user_id)?;
+            Ok(())
+        })
     }
 }
 

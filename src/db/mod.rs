@@ -3,4 +3,4 @@
 //! Contol of data consistency provided by a `database` actor.
 
 mod v0001;
-pub use v0001::{Dba, Session, User};
+pub use v0001::{Dba, DbaError, Session, User};

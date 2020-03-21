@@ -76,7 +76,6 @@ impl TryFrom<&Row<'_>> for ChannelRecord {
 pub enum DbaError {
     #[error("db error: {0}")]
     DbError(#[from] rusqlite::Error),
-    #[cfg(test)]
     #[error("not found")]
     NotFound,
 }

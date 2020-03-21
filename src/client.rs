@@ -20,6 +20,9 @@ impl Client {
                     controller.set_password(cmd.username, cmd.password).await?;
                 }
             },
+            Some(SubCommand::Channel(channel_command)) => match channel_command.subcmd {
+                ChannelSubCommand::Create(cmd) => {}
+            },
             _ => {
                 unreachable!();
             }

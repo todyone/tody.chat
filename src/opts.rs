@@ -10,6 +10,8 @@ pub struct Opts {
 pub enum SubCommand {
     #[clap(name = "user", about = "Manage user accounts")]
     User(UserCommand),
+    #[clap(name = "channel", about = "Manage channels")]
+    Channel(ChannelCommand),
 }
 
 #[derive(Clap)]
@@ -28,4 +30,22 @@ pub enum UserSubCommand {
 pub struct UserCreateCommand {
     pub username: String,
     pub password: String,
+}
+
+#[derive(Clap)]
+pub struct ChannelCommand {
+    #[clap(subcommand)]
+    pub subcmd: ChannelSubCommand,
+}
+
+#[derive(Clap)]
+pub enum ChannelSubCommand {
+    #[clap(name = "create", about = "Create a new channel")]
+    Create(ChannelCreateCommand),
+}
+
+#[derive(Clap)]
+pub struct ChannelCreateCommand {
+    pub channel: String,
+    pub username: String,
 }
