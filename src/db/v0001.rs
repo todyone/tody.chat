@@ -115,7 +115,7 @@ impl Dba {
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
+                username TEXT NOT NULL UNIQUE,
                 password TEXT,
                 email TEXT
             )",
@@ -144,7 +144,7 @@ impl Dba {
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS channels (
                 id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL UNIQUE
             )",
             params![],
         )?;
