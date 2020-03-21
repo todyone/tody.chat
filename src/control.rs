@@ -1,5 +1,5 @@
 use crate::network::{wrap, CodecError, NetworkConnection, ProtocolCodec};
-use crate::types::{Channel, Password, Username};
+use crate::types::{ChannelName, Password, Username};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -22,7 +22,7 @@ pub enum ClientToController {
         password: Password,
     },
     CreateChannel {
-        channel: Channel,
+        channel: ChannelName,
         username: Username,
     },
 }
@@ -31,7 +31,7 @@ pub enum ClientToController {
 pub enum ControllerToClient {
     UserCreated { username: Username },
     PasswordUpdated { username: Username },
-    ChannelCreated { channel: Channel },
+    ChannelCreated { channel: ChannelName },
     Fail(String),
 }
 
@@ -104,7 +104,7 @@ impl Controller {
 
     pub async fn create_channel(
         &mut self,
-        channel: Channel,
+        channel: ChannelName,
         username: Username,
     ) -> Result<(), ControllerError> {
         let expected = channel.clone();

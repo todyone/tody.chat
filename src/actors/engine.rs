@@ -19,7 +19,7 @@
 
 use crate::db::{Dba, DbaError, Session, User};
 use crate::generators::generate_key;
-use crate::types::{Channel, Id, Password, Username};
+use crate::types::{ChannelName, Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
@@ -72,7 +72,7 @@ impl Engine {
         self.interaction(FindSession { key }).await
     }
 
-    pub async fn create_channel(&mut self, channel: Channel, user_id: Id) -> Result<(), Error> {
+    pub async fn create_channel(&mut self, channel: ChannelName, user_id: Id) -> Result<(), Error> {
         self.interaction(CreateChannel { channel, user_id }).await
     }
 }

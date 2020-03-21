@@ -1,4 +1,4 @@
-use crate::types::{Channel, Id, Password, Username};
+use crate::types::{ChannelName, Id, Password, Username};
 use protocol::Key;
 use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;
@@ -52,16 +52,16 @@ impl TryFrom<&Row<'_>> for Session {
 }
 
 #[derive(Debug, Clone)]
-pub struct ChannelRecord {
+pub struct Channel {
     pub id: Id,
-    pub channel: Channel,
+    pub channel: ChannelName,
 }
 
-impl ChannelRecord {
+impl Channel {
     const SELECT_BY_NAME: &'static str = "SELECT id, name FROM channels WHERE name = ?";
 }
 
-impl TryFrom<&Row<'_>> for ChannelRecord {
+impl TryFrom<&Row<'_>> for Channel {
     type Error = rusqlite::Error;
 
     fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
@@ -217,19 +217,19 @@ impl Dba {
         value.map_err(DbaError::from)
     }
 
-    pub fn create_channel(&mut self, name: Channel) -> Result<(), DbaError> {
+    pub fn create_channel(&mut self, name: ChannelName) -> Result<(), DbaError> {
         log::trace!("Creating channel named: {}", name);
         self.conn
             .execute("INSERT INTO channels (name) VALUES (?)", params![&name])?;
         Ok(())
     }
 
-    pub fn get_channel(&mut self, name: Channel) -> Result<ChannelRecord, DbaError> {
+    pub fn get_channel(&mut self, name: ChannelName) -> Result<Channel, DbaError> {
         log::trace!("Getting channel: {}", name);
         let value = self
             .conn
-            .query_row(ChannelRecord::SELECT_BY_NAME, params![&name], |row| {
-                ChannelRecord::try_from(row)
+            .query_row(Channel::SELECT_BY_NAME, params![&name], |row| {
+                Channel::try_from(row)
             });
         log::trace!("Find channel result: {:?}", value);
         value.map_err(DbaError::from)
@@ -285,7 +285,7 @@ mod tests {
         }
 
         fn create_test_channel(&mut self) -> Result<Id, DbaError> {
-            let channel = Channel::from("channel-1");
+            let channel = ChannelName::from("channel-1");
             self.dba.create_channel(channel.clone())?;
             let record = self.dba.get_channel(channel.clone())?;
             Ok(record.id)
@@ -334,7 +334,7 @@ mod tests {
 
     #[test]
     fn channel_check() -> Result<(), DbaError> {
-        let channel = Channel::from("channel-1");
+        let channel = ChannelName::from("channel-1");
         let mut dba = TestDba::new()?;
         dba.create_channel(channel)?;
         Ok(())
