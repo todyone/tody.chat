@@ -12,7 +12,7 @@ pub struct User {
 }
 
 impl User {
-    const SELECT_BY_KEY: &'static str =
+    const SELECT_BY_NAME: &'static str =
         "SELECT id, username, password, email FROM users WHERE username = ?";
 }
 
@@ -51,10 +51,34 @@ impl TryFrom<&Row<'_>> for Session {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ChannelRecord {
+    pub id: Id,
+    pub channel: Channel,
+}
+
+impl ChannelRecord {
+    const SELECT_BY_NAME: &'static str = "SELECT id, name FROM channels WHERE name = ?";
+}
+
+impl TryFrom<&Row<'_>> for ChannelRecord {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row<'_>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: row.get(0)?,
+            channel: row.get(1)?,
+        })
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum DbaError {
     #[error("db error: {0}")]
     DbError(#[from] rusqlite::Error),
+    #[cfg(test)]
+    #[error("not found")]
+    NotFound,
 }
 
 pub struct Dba {
@@ -165,11 +189,11 @@ impl Dba {
         Ok(())
     }
 
-    pub fn find_user(&mut self, username: Username) -> Result<Option<User>, DbaError> {
-        log::trace!("Getting user: {}", username);
+    pub fn find_user(&mut self, name: Username) -> Result<Option<User>, DbaError> {
+        log::trace!("Getting user: {}", name);
         let value = self
             .conn
-            .query_row(User::SELECT_BY_KEY, params![&username], |row| {
+            .query_row(User::SELECT_BY_NAME, params![&name], |row| {
                 User::try_from(row)
             });
         log::trace!("Find user result: {:?}", value);
@@ -196,11 +220,22 @@ impl Dba {
         none_if_no_rows(value)
     }
 
-    pub fn create_channel(&mut self, name: String) -> Result<(), DbaError> {
+    pub fn create_channel(&mut self, name: Channel) -> Result<(), DbaError> {
         log::trace!("Creating channel named: {}", name);
         self.conn
             .execute("INSERT INTO channels (name) VALUES (?)", params![&name])?;
         Ok(())
+    }
+
+    pub fn find_channel(&mut self, name: Channel) -> Result<Option<ChannelRecord>, DbaError> {
+        log::trace!("Getting channel: {}", name);
+        let value = self
+            .conn
+            .query_row(ChannelRecord::SELECT_BY_NAME, params![&name], |row| {
+                ChannelRecord::try_from(row)
+            });
+        log::trace!("Find channel result: {:?}", value);
+        none_if_no_rows(value)
     }
 
     pub fn add_member(&mut self, channel_id: Id, user_id: Id) -> Result<(), DbaError> {
@@ -224,11 +259,11 @@ fn none_if_no_rows<T>(res: Result<T, rusqlite::Error>) -> Result<Option<T>, DbaE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::anyhow;
     use std::ops::{Deref, DerefMut};
 
     struct TestDba {
         dba: Dba,
-        username: Username,
     }
 
     impl Deref for TestDba {
@@ -249,16 +284,29 @@ mod tests {
         fn new() -> Result<Self, DbaError> {
             let mut dba = Dba::open()?;
             dba.initialize()?;
-            let this = Self {
-                dba,
-                username: Username::from("username"),
-            };
+            let this = Self { dba };
             Ok(this)
         }
 
-        fn create_test_user(&mut self) -> Result<(), DbaError> {
-            self.dba.create_user(self.username.clone())?;
-            Ok(())
+        fn create_test_user(&mut self) -> Result<Id, DbaError> {
+            // TODO: Generate random name later
+            let username = Username::from("username");
+            self.dba.create_user(username.clone())?;
+            let record = self
+                .dba
+                .find_user(username.clone())?
+                .ok_or(DbaError::NotFound)?;
+            Ok(record.id)
+        }
+
+        fn create_test_channel(&mut self) -> Result<Id, DbaError> {
+            let channel = Channel::from("channel-1");
+            self.dba.create_channel(channel.clone())?;
+            let record = self
+                .dba
+                .find_channel(channel.clone())?
+                .ok_or(DbaError::NotFound)?;
+            Ok(record.id)
         }
     }
 
@@ -315,10 +363,13 @@ mod tests {
 
     #[test]
     fn channel_membership() -> Result<(), DbaError> {
-        let channel = Channel::from("channel-1");
         let mut dba = TestDba::new()?;
-        dba.create_channel(channel)?;
-        dba.create_test_user()?;
+        let user_id = dba.create_test_user()?;
+        let channel_id = dba.create_test_channel()?;
+        // TODO: Replace Id with separated ChannelId and UserId.
+        // It's possible to confuse them today.
+        dba.add_member(channel_id, user_id)?;
+        // TODO: Check member.
         Ok(())
     }
 }
