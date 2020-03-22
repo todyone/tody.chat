@@ -102,11 +102,11 @@ impl CtrlHandler {
                     self.send(response).await?;
                 }
                 ClientToController::CreateChannel { channel, username } => {
-                    let user = self.engine.get_user(username.clone()).await;
+                    let user = self.engine.find_user(username.clone()).await;
                     // TODO: Refactor that match part
                     let response = {
                         match user {
-                            Ok(user) => {
+                            Ok(Some(user)) => {
                                 log::debug!("Creating channel: {}", channel);
                                 let response = self
                                     .engine
@@ -119,8 +119,13 @@ impl CtrlHandler {
                                     });
                                 response
                             }
+                            Ok(None) => {
+                                let err = format!("Can't find user: {}", username);
+                                log::error!("{}", err);
+                                ControllerToClient::Fail(err)
+                            }
                             Err(err) => {
-                                log::error!("Can't find user: {}", err);
+                                log::error!("Can't find user. Request failed: {}", err);
                                 ControllerToClient::Fail(err.to_string())
                             }
                         }

@@ -137,30 +137,36 @@ impl LiveHandler {
     async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
         match request {
             ClientToServer::CreateSession(creds) => {
-                let user = self.engine.get_user(creds.username).await?;
-                if user.password == creds.password {
-                    let key = self.engine.create_session(user.id).await?;
-                    self.user_id = Some(user.id);
-                    let update = LoginUpdate::LoggedIn { key };
-                    Ok(ServerToClient::LoginUpdate(update))
-                } else {
-                    // Don't share the reason
-                    let update = LoginUpdate::LoginFail;
-                    Ok(ServerToClient::LoginUpdate(update))
+                let user_res = self.engine.find_user(creds.username).await?;
+                match user_res {
+                    Some(user) if user.password == creds.password => {
+                        let key = self.engine.create_session(user.id).await?;
+                        self.user_id = Some(user.id);
+                        let update = LoginUpdate::LoggedIn { key };
+                        Ok(ServerToClient::LoginUpdate(update))
+                    }
+                    Some(_) | None => {
+                        // Don't share the reason
+                        let update = LoginUpdate::LoginFail;
+                        Ok(ServerToClient::LoginUpdate(update))
+                    }
                 }
             }
             ClientToServer::RestoreSession(key) => {
-                let session = self.engine.get_session(key.clone()).await?;
+                let session_res = self.engine.find_session(key.clone()).await?;
                 // TODO: Check properly (with protection)
-                if session.key == key {
-                    // TODO: Update session (last_visit field)
-                    self.user_id = Some(session.user_id);
-                    let update = LoginUpdate::LoggedIn { key };
-                    Ok(ServerToClient::LoginUpdate(update))
-                } else {
-                    // Don't share the reason
-                    let update = LoginUpdate::LoginFail;
-                    Ok(ServerToClient::LoginUpdate(update))
+                match session_res {
+                    Some(session) if session.key == key => {
+                        // TODO: Update session (last_visit field)
+                        self.user_id = Some(session.user_id);
+                        let update = LoginUpdate::LoggedIn { key };
+                        Ok(ServerToClient::LoginUpdate(update))
+                    }
+                    Some(_) | None => {
+                        // Don't share the reason
+                        let update = LoginUpdate::LoginFail;
+                        Ok(ServerToClient::LoginUpdate(update))
+                    }
                 }
             }
             ClientToServer::CreateChannel(channel_name) => {

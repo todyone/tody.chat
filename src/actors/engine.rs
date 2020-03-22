@@ -24,6 +24,7 @@ use anyhow::Error;
 use async_trait::async_trait;
 use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};
 use protocol::Key;
+use rusqlite::Error as SqlError;
 use tokio::task::block_in_place as wait;
 
 /// `Engine` provides business logic methods to manage data.
@@ -52,7 +53,7 @@ impl Engine {
             .await
     }
 
-    pub async fn get_user(&mut self, username: Username) -> Result<User, Error> {
+    pub async fn find_user(&mut self, username: Username) -> Result<Option<User>, Error> {
         self.interaction(FindUser { username }).await
     }
 
@@ -67,7 +68,7 @@ impl Engine {
         .map(|_| key)
     }
 
-    pub async fn get_session(&mut self, key: Key) -> Result<Session, Error> {
+    pub async fn find_session(&mut self, key: Key) -> Result<Option<Session>, Error> {
         // TODO: Check key here
         self.interaction(FindSession { key }).await
     }
@@ -111,7 +112,7 @@ struct FindUser {
 }
 
 impl Interaction for FindUser {
-    type Output = User;
+    type Output = Option<User>;
 }
 
 #[derive(Debug)]
@@ -130,7 +131,7 @@ struct FindSession {
 }
 
 impl Interaction for FindSession {
-    type Output = Session;
+    type Output = Option<Session>;
 }
 
 #[derive(Debug)]
@@ -211,8 +212,8 @@ impl InteractionHandler<UpdatePassword> for EngineActor {
 
 #[async_trait]
 impl InteractionHandler<FindUser> for EngineActor {
-    async fn handle(&mut self, input: FindUser) -> Result<User, Error> {
-        wait(|| self.dba().get_user(input.username)).map_err(Error::from)
+    async fn handle(&mut self, input: FindUser) -> Result<Option<User>, Error> {
+        optional(wait(|| self.dba().get_user(input.username)))
     }
 }
 
@@ -225,8 +226,8 @@ impl InteractionHandler<CreateSession> for EngineActor {
 
 #[async_trait]
 impl InteractionHandler<FindSession> for EngineActor {
-    async fn handle(&mut self, input: FindSession) -> Result<Session, Error> {
-        wait(|| self.dba().get_session(input.key)).map_err(Error::from)
+    async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
+        optional(wait(|| self.dba().get_session(input.key)))
     }
 }
 
@@ -241,6 +242,14 @@ impl InteractionHandler<CreateChannel> for EngineActor {
             self.dba().add_member(channel.id, input.user_id)?;
             Ok(())
         })
+    }
+}
+
+fn optional<T>(res: Result<T, DbaError>) -> Result<Option<T>, Error> {
+    match res {
+        Ok(value) => Ok(Some(value)),
+        Err(DbaError::DbError(SqlError::QueryReturnedNoRows)) => Ok(None),
+        Err(err) => Err(Error::from(err)),
     }
 }
 
