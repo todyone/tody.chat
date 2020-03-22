@@ -1,4 +1,4 @@
-use crate::db::types::{ChannelName, Id, Password, Username};
+use crate::db::types::{ChannelId, ChannelName, Password, SessionId, UserId, Username};
 use protocol::Key;
 use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;
@@ -6,7 +6,7 @@ use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct User {
-    pub id: Id,
+    pub id: UserId,
     pub username: Username,
     pub password: Password,
 }
@@ -30,9 +30,9 @@ impl TryFrom<&Row<'_>> for User {
 
 #[derive(Debug, Clone)]
 pub struct Session {
-    pub id: Id,
+    pub id: SessionId,
     pub key: Key,
-    pub user_id: Id,
+    pub user_id: UserId,
 }
 
 impl Session {
@@ -53,7 +53,7 @@ impl TryFrom<&Row<'_>> for Session {
 
 #[derive(Debug, Clone)]
 pub struct Channel {
-    pub id: Id,
+    pub id: ChannelId,
     pub channel: ChannelName,
 }
 
@@ -177,8 +177,8 @@ impl Dba {
         Ok(())
     }
 
-    pub fn set_password(&mut self, user_id: Id, password: Password) -> Result<(), DbaError> {
-        log::trace!("Setting password for user: {}", user_id);
+    pub fn set_password(&mut self, user_id: UserId, password: Password) -> Result<(), DbaError> {
+        log::trace!("Setting password for user: {:?}", user_id);
         self.conn.execute(
             "UPDATE users SET password = ? WHERE id = ?",
             params![&password, &user_id],
@@ -197,8 +197,8 @@ impl Dba {
         value.map_err(DbaError::from)
     }
 
-    pub fn create_session(&mut self, user_id: Id, key: Key) -> Result<(), DbaError> {
-        log::trace!("Creating session for: {}", user_id);
+    pub fn create_session(&mut self, user_id: UserId, key: Key) -> Result<(), DbaError> {
+        log::trace!("Creating session for: {:?}", user_id);
         self.conn.execute(
             "INSERT INTO sessions (user_id, key) VALUES (?, ?)",
             params![&user_id, &key],
@@ -235,8 +235,8 @@ impl Dba {
         value.map_err(DbaError::from)
     }
 
-    pub fn add_member(&mut self, channel_id: Id, user_id: Id) -> Result<(), DbaError> {
-        log::trace!("Add user {} to channel {}", user_id, channel_id);
+    pub fn add_member(&mut self, channel_id: ChannelId, user_id: UserId) -> Result<(), DbaError> {
+        log::trace!("Add user {:?} to channel {:?}", user_id, channel_id);
         self.conn.execute(
             "INSERT INTO members (channel_id, user_id) VALUES (?, ?)",
             params![&channel_id, user_id],

@@ -1,6 +1,6 @@
 use crate::actors::Engine;
 use crate::assets::{read_assets, Assets};
-use crate::db::types::Id;
+use crate::db::types::UserId;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
@@ -89,7 +89,7 @@ impl AssetHandler {
 /// WebSocket handler for `LiveServerActor`.
 struct LiveHandler {
     engine: Engine,
-    user_id: Option<Id>,
+    user_id: Option<UserId>,
 }
 
 impl LiveHandler {
@@ -159,6 +159,17 @@ impl LiveHandler {
                     Ok(ServerToClient::LoginUpdate(update))
                 } else {
                     // Don't share the reason
+                    let update = LoginUpdate::LoginFail;
+                    Ok(ServerToClient::LoginUpdate(update))
+                }
+            }
+            ClientToServer::CreateChannel(channel_name) => {
+                if let Some(user_id) = self.user_id {
+                    self.engine
+                        .create_channel(channel_name.clone(), user_id)
+                        .await?;
+                    Ok(ServerToClient::ChannelCreated(channel_name))
+                } else {
                     let update = LoginUpdate::LoginFail;
                     Ok(ServerToClient::LoginUpdate(update))
                 }

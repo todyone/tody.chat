@@ -107,6 +107,7 @@ impl Agent for Connector {
                 Ok(ServerToClient::ChannelUpdate(update)) => {
                     self.channel_update(update);
                 }
+                Ok(ServerToClient::ChannelCreated(_)) => {}
                 Ok(ServerToClient::Fail { reason: _ }) => {}
                 Err(err) => {
                     log::error!("WS incoming error: {}", err);

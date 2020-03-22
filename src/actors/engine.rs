@@ -17,7 +17,7 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
-use crate::db::types::{ChannelName, Id, Password, Username};
+use crate::db::types::{ChannelId, ChannelName, Password, UserId, Username};
 use crate::db::{Dba, DbaError, Session, User};
 use crate::generators::generate_key;
 use anyhow::Error;
@@ -56,7 +56,7 @@ impl Engine {
         self.interaction(FindUser { username }).await
     }
 
-    pub async fn create_session(&mut self, user_id: Id) -> Result<Key, Error> {
+    pub async fn create_session(&mut self, user_id: UserId) -> Result<Key, Error> {
         let key = generate_key();
         // TODO: Protect key here
         self.interaction(CreateSession {
@@ -72,7 +72,11 @@ impl Engine {
         self.interaction(FindSession { key }).await
     }
 
-    pub async fn create_channel(&mut self, channel: ChannelName, user_id: Id) -> Result<(), Error> {
+    pub async fn create_channel(
+        &mut self,
+        channel: ChannelName,
+        user_id: UserId,
+    ) -> Result<(), Error> {
         self.interaction(CreateChannel { channel, user_id }).await
     }
 }
@@ -112,7 +116,7 @@ impl Interaction for FindUser {
 
 #[derive(Debug)]
 pub struct CreateSession {
-    user_id: Id,
+    user_id: UserId,
     key: Key,
 }
 
@@ -131,10 +135,9 @@ impl Interaction for FindSession {
 
 #[derive(Debug)]
 pub struct CreateChannel {
-    /// Name of the channel.
-    channel: String,
-    /// `Id` of channel's creator.
-    user_id: Id,
+    channel: ChannelName,
+    /// Channel's creator (first member/owner)
+    user_id: UserId,
 }
 
 impl Interaction for CreateChannel {
@@ -143,8 +146,8 @@ impl Interaction for CreateChannel {
 
 #[derive(Debug)]
 pub struct AddMember {
-    channel_id: Id,
-    user_id: Id,
+    channel_id: ChannelId,
+    user_id: UserId,
 }
 
 impl Interaction for AddMember {
@@ -153,8 +156,8 @@ impl Interaction for AddMember {
 
 #[derive(Debug)]
 pub struct RemoveMember {
-    channel_id: Id,
-    user_id: Id,
+    channel_id: ChannelId,
+    user_id: UserId,
 }
 
 impl Interaction for RemoveMember {
