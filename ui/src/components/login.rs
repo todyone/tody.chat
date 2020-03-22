@@ -1,10 +1,10 @@
-use crate::agents::connector;
+use crate::agents::connector::{Action, Connector, Notification};
 use protocol::Credentials;
 use yew::prelude::*;
 
 pub struct Login {
     link: ComponentLink<Self>,
-    connector: Box<dyn Bridge<connector::Connector>>,
+    connector: Box<dyn Bridge<Connector>>,
     username: String,
     password: String,
     fail: Option<String>,
@@ -20,7 +20,7 @@ pub enum Msg {
     UpdateUsername(String),
     UpdatePassword(String),
     SendCredentials,
-    FromConnector(connector::Notification),
+    FromConnector(Notification),
 }
 
 impl Component for Login {
@@ -29,7 +29,7 @@ impl Component for Login {
 
     fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let callback = link.callback(|n| Msg::FromConnector(n));
-        let connector = connector::Connector::bridge(callback);
+        let connector = Connector::bridge(callback);
         Self {
             link,
             connector,
@@ -52,7 +52,7 @@ impl Component for Login {
                     username: self.username.clone(),
                     password: self.password.clone(),
                 };
-                let action = connector::Action::SetCredentials(creds);
+                let action = Action::SetCredentials(creds);
                 self.connector.send(action);
             }
             Msg::FromConnector(_) => {}

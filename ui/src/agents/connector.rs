@@ -42,6 +42,7 @@ pub enum Info {
 pub enum Action {
     SetCredentials(Credentials),
     Subscribe(HashSet<Info>),
+    CreateChannel(String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -137,6 +138,9 @@ impl Agent for Connector {
                 //self.set_status(Status::LoggedIn);
             }
             Action::Subscribe(set) => {}
+            Action::CreateChannel(channel_name) => {
+                self.create_channel(channel_name);
+            }
         }
     }
 
@@ -229,6 +233,11 @@ impl Connector {
             self.set_login_status(status);
         }
         // TODO: Schedule reconnection...
+    }
+
+    fn create_channel(&mut self, channel_name: String) {
+        let msg = ClientToServer::CreateChannel(channel_name);
+        self.ws.as_mut().unwrap().send(Json(&msg));
     }
 
     fn set_connection_status(&mut self, connection_status: ConnectionStatus) {
