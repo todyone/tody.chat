@@ -1,6 +1,6 @@
 use crate::actors::Engine;
 use crate::assets::{read_assets, Assets};
-use crate::types::Id;
+use crate::db::types::Id;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};

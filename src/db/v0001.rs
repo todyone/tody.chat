@@ -1,4 +1,4 @@
-use crate::types::{ChannelName, Id, Password, Username};
+use crate::db::types::{ChannelName, Id, Password, Username};
 use protocol::Key;
 use rusqlite::{params, Connection, Row};
 use std::convert::TryFrom;

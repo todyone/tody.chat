@@ -17,9 +17,9 @@
 // TODO: Rewrite this module to fully async
 // when SQLite crates will support that.
 
+use crate::db::types::{ChannelName, Id, Password, Username};
 use crate::db::{Dba, DbaError, Session, User};
 use crate::generators::generate_key;
-use crate::types::{ChannelName, Id, Password, Username};
 use anyhow::Error;
 use async_trait::async_trait;
 use meio::{wrapper, Actor, Address, Interaction, InteractionHandler};

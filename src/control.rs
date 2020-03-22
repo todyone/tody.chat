@@ -1,5 +1,5 @@
+use crate::db::types::{ChannelName, Password, Username};
 use crate::network::{wrap, CodecError, NetworkConnection, ProtocolCodec};
-use crate::types::{ChannelName, Password, Username};
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

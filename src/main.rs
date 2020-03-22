@@ -9,7 +9,6 @@ mod generators;
 mod network;
 mod opts;
 mod server;
-mod types;
 
 use anyhow::Error;
 use clap::Clap;
