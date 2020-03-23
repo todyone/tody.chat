@@ -1,6 +1,7 @@
 use crate::components::CreateChannel;
 use yew::prelude::*;
 
+#[derive(Debug, Clone)]
 enum Scene {
     Dashboard,
     Channel(String),
@@ -10,10 +11,14 @@ enum Scene {
 pub struct Chat {
     link: ComponentLink<Self>,
     scene: Scene,
+    // TODO: Consider to use a size-limited stack here
+    previous_scene: Option<Scene>,
 }
 
+#[derive(Debug)]
 pub enum Msg {
     SwitchTo(Scene),
+    Back,
 }
 
 impl Component for Chat {
@@ -24,13 +29,27 @@ impl Component for Chat {
         Self {
             link,
             scene: Scene::Dashboard,
+            previous_scene: Some(Scene::Dashboard),
         }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
+        log::debug!("Chat msg: {:?}", msg);
         match msg {
             Msg::SwitchTo(scene) => {
                 self.scene = scene;
+                match self.scene {
+                    Scene::Dashboard | Scene::Channel(_) => {
+                        self.previous_scene = Some(self.scene.clone());
+                    }
+                    _ => {}
+                }
+            }
+            Msg::Back => {
+                log::debug!("Switching back: {:?}", self.previous_scene);
+                if let Some(scene) = self.previous_scene.take() {
+                    self.scene = scene;
+                }
             }
         }
         true
@@ -75,7 +94,7 @@ impl Chat {
             }
             Scene::AddChannel => {
                 html! {
-                    <CreateChannel />
+                    <CreateChannel oncomplete=self.link.callback(|_| Msg::Back) />
                 }
             }
         }

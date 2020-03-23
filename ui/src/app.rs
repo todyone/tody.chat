@@ -50,6 +50,7 @@ impl Component for App {
                         self.scene = Scene::Main;
                     }
                 },
+                Notification::ChannelStatus(_) => {}
             },
         }
         true

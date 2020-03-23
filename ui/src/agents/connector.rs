@@ -1,7 +1,7 @@
 use anyhow::Error;
 use protocol::{ChannelUpdate, ClientToServer, Credentials, Key, LoginUpdate, ServerToClient};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use url::Url;
 use yew::format::Json;
@@ -32,10 +32,16 @@ pub enum LoginStatus {
     LoggedIn,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum ChannelStatus {
+    ChannelCreated(String),
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Info {
     ConnectionInfo,
     LoginInfo,
+    ChannelInfo,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -49,6 +55,7 @@ pub enum Action {
 pub enum Notification {
     ConnectionStatus(ConnectionStatus),
     LoginStatus(LoginStatus),
+    ChannelStatus(ChannelStatus),
 }
 
 enum LoginBy {
@@ -64,6 +71,7 @@ pub struct Connector {
     service: WebSocketService,
     storage: StorageService,
     subscribers: HashSet<HandlerId>,
+    subscriptions: HashMap<Info, HashSet<HandlerId>>,
     ws: Option<WebSocketTask>,
     login_by: Option<LoginBy>,
 }
@@ -91,6 +99,7 @@ impl Agent for Connector {
             service: WebSocketService::new(),
             storage,
             subscribers: HashSet::new(),
+            subscriptions: HashMap::new(),
             ws: None,
             login_by: None,
         };
@@ -108,7 +117,11 @@ impl Agent for Connector {
                 Ok(ServerToClient::ChannelUpdate(update)) => {
                     self.channel_update(update);
                 }
-                Ok(ServerToClient::ChannelCreated(_)) => {}
+                Ok(ServerToClient::ChannelCreated(channel_name)) => {
+                    let msg =
+                        Notification::ChannelStatus(ChannelStatus::ChannelCreated(channel_name));
+                    self.notify_subscribers(Info::ChannelInfo, msg);
+                }
                 Ok(ServerToClient::Fail { reason: _ }) => {}
                 Err(err) => {
                     log::error!("WS incoming error: {}", err);
@@ -126,7 +139,7 @@ impl Agent for Connector {
         }
     }
 
-    fn handle_input(&mut self, msg: Self::Input, _: HandlerId) {
+    fn handle_input(&mut self, msg: Self::Input, handler: HandlerId) {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
             Action::SetCredentials(creds) => {
@@ -137,7 +150,12 @@ impl Agent for Connector {
                 // TODO: Set it on authorized
                 //self.set_status(Status::LoggedIn);
             }
-            Action::Subscribe(set) => {}
+            Action::Subscribe(set) => {
+                for info in set {
+                    self.subscriptions.entry(info).or_default().insert(handler);
+                }
+                // TODO: Check and track difference
+            }
             Action::CreateChannel(channel_name) => {
                 self.create_channel(channel_name);
             }
@@ -243,13 +261,13 @@ impl Connector {
     fn set_connection_status(&mut self, connection_status: ConnectionStatus) {
         self.connection_status = connection_status;
         let notification = Notification::ConnectionStatus(self.connection_status.clone());
-        self.notify_subscribers(notification);
+        self.notify_all_subscribers(notification);
     }
 
     fn set_login_status(&mut self, login_status: LoginStatus) {
         self.login_status = login_status;
         let notification = Notification::LoginStatus(self.login_status.clone());
-        self.notify_subscribers(notification);
+        self.notify_all_subscribers(notification);
     }
 
     fn connect(&mut self) -> Result<(), Error> {
@@ -285,7 +303,15 @@ impl Connector {
         self.link.respond(id, notification);
     }
 
-    fn notify_subscribers(&self, notification: Notification) {
+    fn notify_subscribers(&self, info: Info, notification: Notification) {
+        if let Some(set) = self.subscriptions.get(&info) {
+            for sub in set {
+                self.link.respond(*sub, notification.clone());
+            }
+        }
+    }
+
+    fn notify_all_subscribers(&self, notification: Notification) {
         for sub in self.subscribers.iter() {
             self.link.respond(*sub, notification.clone());
         }
