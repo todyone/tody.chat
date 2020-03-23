@@ -25,6 +25,7 @@ pub enum ClientToController {
         channel: ChannelName,
         username: Username,
     },
+    GetChannels,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -32,6 +33,7 @@ pub enum ControllerToClient {
     UserCreated { username: Username },
     PasswordUpdated { username: Username },
     ChannelCreated { channel: ChannelName },
+    ChannelsList { channels: Vec<ChannelName> },
     Fail(String),
 }
 
@@ -111,6 +113,14 @@ impl Controller {
         let msg = ClientToController::CreateChannel { channel, username };
         match self.interact(msg).await? {
             ControllerToClient::ChannelCreated { channel } if channel == expected => Ok(()),
+            other => Err(ControllerError::UnexpectedResponse(other)),
+        }
+    }
+
+    pub async fn get_channels(&mut self) -> Result<Vec<ChannelName>, ControllerError> {
+        let msg = ClientToController::GetChannels;
+        match self.interact(msg).await? {
+            ControllerToClient::ChannelsList { channels } => Ok(channels),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }

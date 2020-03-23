@@ -132,6 +132,22 @@ impl CtrlHandler {
                     };
                     self.send(response).await?;
                 }
+                ClientToController::GetChannels => {
+                    log::debug!("Getting channels");
+                    let response = self
+                        .engine
+                        .get_channels()
+                        .await
+                        .map(|channels| {
+                            let channels = channels.into_iter().map(|c| c.channel).collect();
+                            ControllerToClient::ChannelsList { channels }
+                        })
+                        .unwrap_or_else(|err| {
+                            log::error!("Can't get channels: {}", err);
+                            ControllerToClient::Fail(err.to_string())
+                        });
+                    self.send(response).await?;
+                }
             }
         }
         Ok(())

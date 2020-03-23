@@ -5,4 +5,4 @@
 pub mod types;
 
 mod v0001;
-pub use v0001::{Dba, DbaError, Session, User};
+pub use v0001::{Channel, Dba, DbaError, Session, User};

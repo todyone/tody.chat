@@ -23,6 +23,13 @@ impl Client {
                 ChannelSubCommand::Create(cmd) => {
                     controller.create_channel(cmd.channel, cmd.username).await?;
                 }
+                ChannelSubCommand::List => {
+                    println!("Channels:");
+                    let channels = controller.get_channels().await?;
+                    for channel in channels {
+                        println!("{}", channel);
+                    }
+                }
             },
             _ => {
                 unreachable!();

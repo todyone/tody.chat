@@ -59,6 +59,7 @@ pub struct Channel {
 
 impl Channel {
     const SELECT_BY_NAME: &'static str = "SELECT id, name FROM channels WHERE name = ?";
+    const SELECT_ALL: &'static str = "SELECT id, name FROM channels";
 }
 
 impl TryFrom<&Row<'_>> for Channel {
@@ -242,6 +243,17 @@ impl Dba {
             params![&channel_id, user_id],
         )?;
         Ok(())
+    }
+
+    pub fn get_channels(&mut self) -> Result<Vec<Channel>, DbaError> {
+        log::trace!("Getting channels");
+        let mut stmt = self.conn.prepare(Channel::SELECT_ALL)?;
+        let results = stmt.query_map(params![], |row| Channel::try_from(row))?;
+        let mut channels = Vec::new();
+        for result in results {
+            channels.push(result?);
+        }
+        Ok(channels)
     }
 }
 

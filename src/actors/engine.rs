@@ -18,7 +18,7 @@
 // when SQLite crates will support that.
 
 use crate::db::types::{ChannelId, ChannelName, Password, UserId, Username};
-use crate::db::{Dba, DbaError, Session, User};
+use crate::db::{Channel, Dba, DbaError, Session, User};
 use crate::generators::generate_key;
 use anyhow::Error;
 use async_trait::async_trait;
@@ -79,6 +79,10 @@ impl Engine {
         user_id: UserId,
     ) -> Result<(), Error> {
         self.interaction(CreateChannel { channel, user_id }).await
+    }
+
+    pub async fn get_channels(&mut self) -> Result<Vec<Channel>, Error> {
+        self.interaction(GetChannels {}).await
     }
 }
 
@@ -143,6 +147,15 @@ pub struct CreateChannel {
 
 impl Interaction for CreateChannel {
     type Output = (); // TODO: Return channel info? At least channel Id.
+}
+
+#[derive(Debug)]
+pub struct GetChannels {
+    // TODO: Add user's filter
+}
+
+impl Interaction for GetChannels {
+    type Output = Vec<Channel>;
 }
 
 #[derive(Debug)]
@@ -242,6 +255,13 @@ impl InteractionHandler<CreateChannel> for EngineActor {
             self.dba().add_member(channel.id, input.user_id)?;
             Ok(())
         })
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<GetChannels> for EngineActor {
+    async fn handle(&mut self, _: GetChannels) -> Result<Vec<Channel>, Error> {
+        wait(|| self.dba().get_channels()).map_err(Error::from)
     }
 }
 

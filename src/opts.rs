@@ -42,6 +42,8 @@ pub struct ChannelCommand {
 pub enum ChannelSubCommand {
     #[clap(name = "create", about = "Create a new channel")]
     Create(ChannelCreateCommand),
+    #[clap(name = "list", about = "List of channels")]
+    List,
 }
 
 #[derive(Clap)]
