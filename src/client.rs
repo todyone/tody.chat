@@ -30,6 +30,9 @@ impl Client {
                         println!("{}", channel);
                     }
                 }
+                ChannelSubCommand::Delete(cmd) => {
+                    controller.delete_channel(cmd.channel).await?;
+                }
             },
             _ => {
                 unreachable!();

@@ -44,10 +44,17 @@ pub enum ChannelSubCommand {
     Create(ChannelCreateCommand),
     #[clap(name = "list", about = "List of channels")]
     List,
+    #[clap(name = "delete", about = "Delete a channel")]
+    Delete(ChannelDeleteCommand),
 }
 
 #[derive(Clap)]
 pub struct ChannelCreateCommand {
     pub channel: String,
     pub username: String,
+}
+
+#[derive(Clap)]
+pub struct ChannelDeleteCommand {
+    pub channel: String,
 }

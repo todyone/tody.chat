@@ -59,7 +59,7 @@ pub struct Channel {
 
 impl Channel {
     const SELECT_BY_NAME: &'static str = "SELECT id, name FROM channels WHERE name = ?";
-    const SELECT_ALL: &'static str = "SELECT id, name FROM channels";
+    const SELECT_ALL: &'static str = "SELECT id, name FROM channels WHERE deleted = 0";
 }
 
 impl TryFrom<&Row<'_>> for Channel {
@@ -145,7 +145,8 @@ impl Dba {
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS channels (
                 id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL UNIQUE
+                name TEXT NOT NULL UNIQUE,
+                deleted INTEGER NOT NULL
             )",
             params![],
         )?;
@@ -220,8 +221,10 @@ impl Dba {
 
     pub fn create_channel(&mut self, name: ChannelName) -> Result<(), DbaError> {
         log::trace!("Creating channel named: {}", name);
-        self.conn
-            .execute("INSERT INTO channels (name) VALUES (?)", params![&name])?;
+        self.conn.execute(
+            "INSERT INTO channels (name, deleted) VALUES (?, 0)",
+            params![&name],
+        )?;
         Ok(())
     }
 
@@ -254,6 +257,15 @@ impl Dba {
             channels.push(result?);
         }
         Ok(channels)
+    }
+
+    pub fn delete_channel(&mut self, name: ChannelName) -> Result<(), DbaError> {
+        log::trace!("Deleting channel named: {}", name);
+        self.conn.execute(
+            "UPDATE channels SET deleted = 1 WHERE name = ?",
+            params![&name],
+        )?;
+        Ok(())
     }
 }
 

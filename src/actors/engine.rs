@@ -84,6 +84,10 @@ impl Engine {
     pub async fn get_channels(&mut self) -> Result<Vec<Channel>, Error> {
         self.interaction(GetChannels {}).await
     }
+
+    pub async fn delete_channel(&mut self, channel: ChannelName) -> Result<(), Error> {
+        self.interaction(DeleteChannel { channel }).await
+    }
 }
 
 pub struct EngineActor {
@@ -178,6 +182,15 @@ impl Interaction for RemoveMember {
     type Output = ();
 }
 
+#[derive(Debug)]
+pub struct DeleteChannel {
+    channel: ChannelName,
+}
+
+impl Interaction for DeleteChannel {
+    type Output = ();
+}
+
 #[async_trait]
 impl Actor for EngineActor {
     type Interface = Engine;
@@ -241,6 +254,13 @@ impl InteractionHandler<CreateSession> for EngineActor {
 impl InteractionHandler<FindSession> for EngineActor {
     async fn handle(&mut self, input: FindSession) -> Result<Option<Session>, Error> {
         optional(wait(|| self.dba().get_session(input.key)))
+    }
+}
+
+#[async_trait]
+impl InteractionHandler<DeleteChannel> for EngineActor {
+    async fn handle(&mut self, input: DeleteChannel) -> Result<(), Error> {
+        wait(|| self.dba().delete_channel(input.channel)).map_err(Error::from)
     }
 }
 

@@ -148,6 +148,19 @@ impl CtrlHandler {
                         });
                     self.send(response).await?;
                 }
+                ClientToController::DeleteChannel { channel } => {
+                    log::debug!("Deleting channel: {}", channel);
+                    let response = self
+                        .engine
+                        .delete_channel(channel.clone())
+                        .await
+                        .map(|_| ControllerToClient::ChannelDeleted { channel })
+                        .unwrap_or_else(|err| {
+                            log::error!("Can't delete channel: {}", err);
+                            ControllerToClient::Fail(err.to_string())
+                        });
+                    self.send(response).await?;
+                }
             }
         }
         Ok(())

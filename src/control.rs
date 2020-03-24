@@ -26,6 +26,9 @@ pub enum ClientToController {
         username: Username,
     },
     GetChannels,
+    DeleteChannel {
+        channel: ChannelName,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,6 +37,7 @@ pub enum ControllerToClient {
     PasswordUpdated { username: Username },
     ChannelCreated { channel: ChannelName },
     ChannelsList { channels: Vec<ChannelName> },
+    ChannelDeleted { channel: ChannelName },
     Fail(String),
 }
 
@@ -121,6 +125,14 @@ impl Controller {
         let msg = ClientToController::GetChannels;
         match self.interact(msg).await? {
             ControllerToClient::ChannelsList { channels } => Ok(channels),
+            other => Err(ControllerError::UnexpectedResponse(other)),
+        }
+    }
+
+    pub async fn delete_channel(&mut self, channel: ChannelName) -> Result<(), ControllerError> {
+        let msg = ClientToController::DeleteChannel { channel };
+        match self.interact(msg).await? {
+            ControllerToClient::ChannelDeleted { channel } => Ok(()),
             other => Err(ControllerError::UnexpectedResponse(other)),
         }
     }
