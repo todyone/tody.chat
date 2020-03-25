@@ -3,7 +3,7 @@ use protocol::{
     ChannelUpdate, ClientToServer, Credentials, Delta, Key, LoginUpdate, Reaction, ServerToClient,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use thiserror::Error;
 use url::Url;
 use yew::format::Json;
@@ -54,6 +54,12 @@ pub enum Action {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum Response {
+    Reaction(Reaction),
+    Notification(Notification),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Notification {
     ConnectionStatus(ConnectionStatus),
     LoginStatus(LoginStatus),
@@ -63,6 +69,11 @@ pub enum Notification {
 enum LoginBy {
     ByKey(Key),
     ByCredentials(Credentials),
+}
+
+struct Task {
+    recipient: HandlerId,
+    action: Option<Action>,
 }
 
 /// Keeps connection to WebSockets automatically.
@@ -76,6 +87,8 @@ pub struct Connector {
     subscriptions: HashMap<Info, HashSet<HandlerId>>,
     ws: Option<WebSocketTask>,
     login_by: Option<LoginBy>,
+    task_queue: VecDeque<Task>,
+    active_task: Option<Task>,
 }
 
 #[derive(Debug)]
@@ -104,6 +117,8 @@ impl Agent for Connector {
             subscriptions: HashMap::new(),
             ws: None,
             login_by: None,
+            task_queue: VecDeque::new(),
+            active_task: None,
         };
         this.restore_key();
         this
@@ -130,11 +145,8 @@ impl Agent for Connector {
                     }
                 }
                 Ok(ServerToClient::Reaction(reaction)) => {
-                    match reaction {
-                        Reaction::Success => {
-                            // TODO: Get next from queue and send
-                        }
-                        Reaction::Fail { reason: _ } => {}
+                    if let Some(task) = self.active_task.take() {
+                        // TODO: self.send_reaction_to(task.recipient, reaction);
                     }
                 }
                 Err(err) => {
@@ -154,6 +166,13 @@ impl Agent for Connector {
     }
 
     fn handle_input(&mut self, msg: Self::Input, handler: HandlerId) {
+        let task = Task {
+            recipient: handler,
+            action: Some(msg),
+        };
+        self.task_queue.push_back(task);
+        self.process_task();
+        /*
         log::trace!("Connector msg: {:?}", msg);
         match msg {
             Action::SetCredentials(creds) => {
@@ -174,8 +193,10 @@ impl Agent for Connector {
                 self.create_channel(channel_name);
             }
         }
+        */
     }
 
+    /// Consumer connected
     fn connected(&mut self, id: HandlerId) {
         self.subscribers.insert(id);
         self.send_status_to(id);
@@ -187,6 +208,7 @@ impl Agent for Connector {
         }
     }
 
+    /// Consumer disconnected
     fn disconnected(&mut self, id: HandlerId) {
         self.subscribers.remove(&id);
         // Disconnect if there is no any listener remained
@@ -197,58 +219,17 @@ impl Agent for Connector {
 }
 
 impl Connector {
-    fn login_update(&mut self, update: LoginUpdate) {
-        match update {
-            LoginUpdate::LoggedIn { key } => {
-                let status = LoginStatus::LoggedIn;
-                self.set_login_status(status);
-                self.store_key(key);
-            }
-            LoginUpdate::LoginFail => {
-                let reason;
-                // Reset login_by field
-                match self.login_by.take() {
-                    Some(LoginBy::ByKey(_)) => {
-                        reason = "Session expired".to_string();
-                    }
-                    Some(LoginBy::ByCredentials(_)) => {
-                        reason = "Bad credentials".to_string();
-                    }
-                    None => {
-                        unreachable!("Login failed without login info.");
-                    }
-                }
-                let fail = Some(reason);
-                let status = LoginStatus::NeedCredentials { fail };
-                self.set_login_status(status);
+    fn process_task(&mut self) {
+        let connected = matches!(self.connection_status, ConnectionStatus::Connected);
+        if connected && self.active_task.is_none() {
+            if let Some(mut task) = self.task_queue.pop_front() {
+                let msg = task.action.take().expect("empty task in a queue");
+                self.active_task = Some(task);
+                self.ws.as_mut().unwrap().send(Json(&msg));
             }
         }
     }
 
-    fn channel_update(&mut self, update: ChannelUpdate) {
-        todo!();
-    }
-}
-
-impl Connector {
-    const KEY: &'static str = "tody.chat.login_key";
-
-    fn store_key(&mut self, key: Key) {
-        self.storage.store(Self::KEY, Json(&key));
-        self.login_by = Some(LoginBy::ByKey(key));
-    }
-
-    fn restore_key(&mut self) {
-        let Json(key) = self.storage.restore(Self::KEY);
-        self.login_by = key.ok().map(LoginBy::ByKey);
-    }
-
-    fn remove_key(&mut self) {
-        self.storage.remove(Self::KEY);
-    }
-}
-
-impl Connector {
     fn login(&mut self) {
         if let Some(login_by) = self.login_by.as_ref() {
             let msg = {
@@ -329,5 +310,57 @@ impl Connector {
         for sub in self.subscribers.iter() {
             self.link.respond(*sub, notification.clone());
         }
+    }
+}
+
+impl Connector {
+    fn login_update(&mut self, update: LoginUpdate) {
+        match update {
+            LoginUpdate::LoggedIn { key } => {
+                let status = LoginStatus::LoggedIn;
+                self.set_login_status(status);
+                self.store_key(key);
+            }
+            LoginUpdate::LoginFail => {
+                let reason;
+                // Reset login_by field
+                match self.login_by.take() {
+                    Some(LoginBy::ByKey(_)) => {
+                        reason = "Session expired".to_string();
+                    }
+                    Some(LoginBy::ByCredentials(_)) => {
+                        reason = "Bad credentials".to_string();
+                    }
+                    None => {
+                        unreachable!("Login failed without login info.");
+                    }
+                }
+                let fail = Some(reason);
+                let status = LoginStatus::NeedCredentials { fail };
+                self.set_login_status(status);
+            }
+        }
+    }
+
+    fn channel_update(&mut self, update: ChannelUpdate) {
+        todo!();
+    }
+}
+
+impl Connector {
+    const KEY: &'static str = "tody.chat.login_key";
+
+    fn store_key(&mut self, key: Key) {
+        self.storage.store(Self::KEY, Json(&key));
+        self.login_by = Some(LoginBy::ByKey(key));
+    }
+
+    fn restore_key(&mut self) {
+        let Json(key) = self.storage.restore(Self::KEY);
+        self.login_by = key.ok().map(LoginBy::ByKey);
+    }
+
+    fn remove_key(&mut self) {
+        self.storage.remove(Self::KEY);
     }
 }
