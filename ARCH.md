@@ -16,3 +16,7 @@ App interacts with a server using sequental (one request one respone) interactio
 That's drastically simplifies debugging, support and size of codebase.
 Also it allows to track and manage a queue of unsent messages.
 Client tracks components that sent a request.
+
+### Action, Reaction, Notification Model (ARNM)
+Sequence: `Action` -> `Reaction`
+In parallel: -> `Notification`

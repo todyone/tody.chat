@@ -1,6 +1,4 @@
-use crate::agents::connector::{
-    Action, ChannelStatus, ConnectionStatus, Connector, Info, LoginStatus, Notification,
-};
+use crate::agents::connector::{Action, ChannelStatus, Connector, Info, Notification};
 use yew::prelude::*;
 
 #[derive(Clone, PartialEq, Properties)]

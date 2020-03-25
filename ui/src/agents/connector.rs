@@ -1,5 +1,7 @@
 use anyhow::Error;
-use protocol::{ChannelUpdate, ClientToServer, Credentials, Key, LoginUpdate, ServerToClient};
+use protocol::{
+    ChannelUpdate, ClientToServer, Credentials, Delta, Key, LoginUpdate, Reaction, ServerToClient,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -111,18 +113,30 @@ impl Agent for Connector {
         log::info!("Connector agent message: {:?}", msg);
         match msg {
             Msg::WsReady(res) => match res {
-                Ok(ServerToClient::LoginUpdate(update)) => {
-                    self.login_update(update);
+                Ok(ServerToClient::Delta(delta)) => {
+                    match delta {
+                        Delta::LoginUpdate(update) => {
+                            self.login_update(update);
+                        }
+                        Delta::ChannelUpdate(update) => {
+                            self.channel_update(update);
+                        } /* TODO: Track results and notify about tasks
+                          Delta::ChannelCreated(channel_name) => {
+                              let msg =
+                                  Notification::ChannelStatus(ChannelStatus::ChannelCreated(channel_name));
+                              self.notify_subscribers(Info::ChannelInfo, msg);
+                          }
+                          */
+                    }
                 }
-                Ok(ServerToClient::ChannelUpdate(update)) => {
-                    self.channel_update(update);
+                Ok(ServerToClient::Reaction(reaction)) => {
+                    match reaction {
+                        Reaction::Success => {
+                            // TODO: Get next from queue and send
+                        }
+                        Reaction::Fail { reason: _ } => {}
+                    }
                 }
-                Ok(ServerToClient::ChannelCreated(channel_name)) => {
-                    let msg =
-                        Notification::ChannelStatus(ChannelStatus::ChannelCreated(channel_name));
-                    self.notify_subscribers(Info::ChannelInfo, msg);
-                }
-                Ok(ServerToClient::Fail { reason: _ }) => {}
                 Err(err) => {
                     log::error!("WS incoming error: {}", err);
                 }

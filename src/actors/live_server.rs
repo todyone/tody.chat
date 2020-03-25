@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use headers::{ContentType, HeaderMapExt};
 use meio::{wrapper, Actor, Context};
-use protocol::{ClientToServer, LoginUpdate, ServerToClient};
+use protocol::{ClientToServer, Delta, LoginUpdate, Reaction, ServerToClient};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place as wait;
@@ -114,11 +114,10 @@ impl LiveHandler {
             if msg.is_text() || msg.is_binary() {
                 let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
                 log::trace!("Received: {:?}", request);
-                let response = self.process_request(request).await.unwrap_or_else(|err| {
-                    ServerToClient::Fail {
-                        reason: err.to_string(),
-                    }
-                });
+                let response = self
+                    .process_request(request)
+                    .await
+                    .unwrap_or_else(ServerToClient::fail);
                 let bytes = serde_json::to_vec(&response)?;
                 let message = Message::binary(bytes);
                 // TODO: Consider: track numbers instead of sequental processing
@@ -137,35 +136,50 @@ impl LiveHandler {
     async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
         match request {
             ClientToServer::CreateSession(creds) => {
+                // TODO: `Engine` needs high level functions like `engine.create_session(creds)`
                 let user_res = self.engine.find_user(creds.username).await?;
                 match user_res {
                     Some(user) if user.password == creds.password => {
+                        // TODO: `Engine` have to send LoggedIn event to every `LiveHandler`
                         let key = self.engine.create_session(user.id).await?;
                         self.user_id = Some(user.id);
+                        /* TODO: Schedule LoggedIn notification
                         let update = LoginUpdate::LoggedIn { key };
-                        Ok(ServerToClient::LoginUpdate(update))
+                        let delta = Delta::LoginUpdate(update);
+                        Ok(ServerToClient::Delta(delta))
+                        */
+                        Ok(ServerToClient::success())
                     }
                     Some(_) | None => {
-                        // Don't share the reason
+                        /* TODO: Schedule it
                         let update = LoginUpdate::LoginFail;
                         Ok(ServerToClient::LoginUpdate(update))
+                        */
+                        Ok(ServerToClient::fail("Bad credentials."))
                     }
                 }
             }
             ClientToServer::RestoreSession(key) => {
+                // TODO: Replace with `engine.restore_session(key)` method
                 let session_res = self.engine.find_session(key.clone()).await?;
                 // TODO: Check properly (with protection)
                 match session_res {
                     Some(session) if session.key == key => {
                         // TODO: Update session (last_visit field)
                         self.user_id = Some(session.user_id);
+                        /* TODO: Schedule
                         let update = LoginUpdate::LoggedIn { key };
                         Ok(ServerToClient::LoginUpdate(update))
+                        */
+                        Ok(ServerToClient::success())
                     }
                     Some(_) | None => {
                         // Don't share the reason
+                        /* TODO: Schedule
                         let update = LoginUpdate::LoginFail;
                         Ok(ServerToClient::LoginUpdate(update))
+                        */
+                        Ok(ServerToClient::fail("Bad session ket."))
                     }
                 }
             }
@@ -174,10 +188,15 @@ impl LiveHandler {
                     self.engine
                         .create_channel(channel_name.clone(), user_id)
                         .await?;
+                    /* TODO: Schedule
                     Ok(ServerToClient::ChannelCreated(channel_name))
+                    */
+                    Ok(ServerToClient::success())
                 } else {
-                    let update = LoginUpdate::LoginFail;
-                    Ok(ServerToClient::LoginUpdate(update))
+                    /* TODO: Schedule Channel Added notification for all
+                     * (or use `EngineActor` or `LiveActor` to track and send that type of notifications)
+                     */
+                    Ok(ServerToClient::fail("Can't create channel"))
                 }
             }
         }

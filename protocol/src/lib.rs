@@ -14,6 +14,7 @@ pub struct Credentials {
     pub password: Password,
 }
 
+/// `Action`
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum ClientToServer {
     CreateSession(Credentials),
@@ -23,10 +24,35 @@ pub enum ClientToServer {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum ServerToClient {
+    Delta(Delta),
+    Reaction(Reaction),
+}
+
+impl ServerToClient {
+    pub fn success() -> Self {
+        let reaction = Reaction::Success;
+        Self::Reaction(reaction)
+    }
+}
+
+impl ServerToClient {
+    pub fn fail(reason: impl ToString) -> Self {
+        let reaction = Reaction::Fail { reason: reason.to_string() };
+        Self::Reaction(reaction)
+    }
+}
+
+/// `Notification`
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum Delta {
     LoginUpdate(LoginUpdate),
     ChannelUpdate(ChannelUpdate),
-    // TODO: Consider to listen to Channels List Notifications only (no specific mgs)
-    ChannelCreated(ChannelName),
+}
+
+/// `Reaction`
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum Reaction {
+    Success,
     Fail {
         reason: String,
     },
