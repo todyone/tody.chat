@@ -14,12 +14,12 @@ impl Client {
     pub async fn run(self) -> Result<(), Error> {
         let mut controller = Controller::connect("127.0.0.1:3020").await?;
         match self.opts.subcmd {
-            Some(SubCommand::User(user_command)) => match user_command.subcmd {
+            SubCommand::User(user_command) => match user_command.subcmd {
                 UserSubCommand::Create(cmd) => {
                     controller.create_user(cmd.username, cmd.password).await?;
                 }
             },
-            Some(SubCommand::Channel(channel_command)) => match channel_command.subcmd {
+            SubCommand::Channel(channel_command) => match channel_command.subcmd {
                 ChannelSubCommand::Create(cmd) => {
                     controller.create_channel(cmd.channel, cmd.username).await?;
                 }

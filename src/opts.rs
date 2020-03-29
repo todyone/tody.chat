@@ -3,7 +3,7 @@ use clap::Clap;
 #[derive(Clap)]
 pub struct Opts {
     #[clap(subcommand)]
-    pub subcmd: Option<SubCommand>,
+    pub subcmd: SubCommand,
 }
 
 #[derive(Clap)]

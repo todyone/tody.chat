@@ -19,7 +19,7 @@ use server::Server;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
-    if let Some(SubCommand::Run) = opts.subcmd {
+    if let SubCommand::Run = opts.subcmd {
         Server::new(opts).run().await
     } else {
         Client::new(opts).run().await
