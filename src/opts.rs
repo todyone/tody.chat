@@ -8,6 +8,8 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub enum SubCommand {
+    #[clap(name = "run", about = "Start a server")]
+    Run,
     #[clap(name = "user", about = "Manage user accounts")]
     User(UserCommand),
     #[clap(name = "channel", about = "Manage channels")]
