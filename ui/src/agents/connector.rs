@@ -48,8 +48,13 @@ pub enum Info {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum Action {
-    SetCredentials(Credentials),
+    SendRequest(ClientToServer),
     Subscribe(HashSet<Info>),
+
+    // TODO: Remove duplicatied requests
+    SetCredentials(Credentials),
+
+    // TODO: Remove duplicatied requests
     CreateChannel(String),
 }
 
@@ -73,7 +78,7 @@ enum LoginBy {
 
 struct Task {
     recipient: HandlerId,
-    action: Option<Action>,
+    request: Option<ClientToServer>,
 }
 
 /// Keeps connection to WebSockets automatically.
@@ -166,14 +171,21 @@ impl Agent for Connector {
     }
 
     fn handle_input(&mut self, msg: Self::Input, handler: HandlerId) {
-        let task = Task {
-            recipient: handler,
-            action: Some(msg),
-        };
-        self.task_queue.push_back(task);
-        self.process_task();
-        /*
         log::trace!("Connector msg: {:?}", msg);
+        match msg {
+            Action::SendRequest(request) => {
+                let task = Task {
+                    recipient: handler,
+                    request: Some(request),
+                };
+                self.task_queue.push_back(task);
+                self.process_task();
+            }
+            _ => {
+                todo!();
+            }
+        }
+        /*
         match msg {
             Action::SetCredentials(creds) => {
                 // Remove automatic login and wait for the new token
@@ -223,7 +235,7 @@ impl Connector {
         let connected = matches!(self.connection_status, ConnectionStatus::Connected);
         if connected && self.active_task.is_none() {
             if let Some(mut task) = self.task_queue.pop_front() {
-                let msg = task.action.take().expect("empty task in a queue");
+                let msg = task.request.take().expect("empty task in a queue");
                 self.active_task = Some(task);
                 self.ws.as_mut().unwrap().send(Json(&msg));
             }
