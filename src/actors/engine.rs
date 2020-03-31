@@ -200,6 +200,7 @@ impl Actor for EngineActor {
     }
 
     async fn initialize(&mut self, _address: Address<Self>) -> Result<(), Error> {
+        std::fs::create_dir_all(crate::db::DATA_DIR)?;
         let dba = Dba::open()?;
         self.dba = Some(dba);
         wait(|| self.dba().initialize())?;

@@ -86,7 +86,7 @@ pub struct Dba {
 impl Dba {
     #[cfg(not(test))]
     pub fn open() -> Result<Self, DbaError> {
-        let path = "data/v0001.db3";
+        let path = format!("{}/v0001.db3", super::DATA_DIR);
         let conn = Connection::open(path)?;
         Ok(Self { conn })
     }
