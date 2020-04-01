@@ -7,6 +7,7 @@ use futures::{SinkExt, StreamExt};
 use headers::{ContentType, HeaderMapExt};
 use meio::{wrapper, Actor, Context};
 use protocol::{ClientToServer, Delta, LoginUpdate, Reaction, ServerToClient};
+use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place as wait;
@@ -90,6 +91,8 @@ impl AssetHandler {
 struct LiveHandler {
     engine: Engine,
     user_id: Option<UserId>,
+    // TODO: Use channel here
+    queue: VecDeque<Delta>,
 }
 
 impl LiveHandler {
@@ -101,6 +104,7 @@ impl LiveHandler {
         let this = Self {
             engine,
             user_id: None,
+            queue: VecDeque::new(),
         };
         if let Err(err) = this.routine(websocket).await {
             log::warn!("LiveHandler error: {}", err);
@@ -114,14 +118,18 @@ impl LiveHandler {
             if msg.is_text() || msg.is_binary() {
                 let request: ClientToServer = serde_json::from_slice(msg.as_bytes())?;
                 log::trace!("Received: {:?}", request);
-                let response = self
+                let reaction = self
                     .process_request(request)
                     .await
-                    .unwrap_or_else(ServerToClient::fail);
-                let bytes = serde_json::to_vec(&response)?;
-                let message = Message::binary(bytes);
-                // TODO: Consider: track numbers instead of sequental processing
-                tx.send(message).await?;
+                    .unwrap_or_else(Reaction::fail);
+                let mut messages = vec![ServerToClient::Reaction(reaction)];
+                messages.extend(self.queue.drain(..).map(ServerToClient::Delta));
+                for response in messages {
+                    let bytes = serde_json::to_vec(&response)?;
+                    let message = Message::binary(bytes);
+                    // TODO: Consider: track numbers instead of sequental processing
+                    tx.send(message).await?;
+                }
             } else if msg.is_ping() || msg.is_pong() {
             } else if msg.is_close() {
                 break;
@@ -133,7 +141,11 @@ impl LiveHandler {
         Ok(())
     }
 
-    async fn process_request(&mut self, request: ClientToServer) -> Result<ServerToClient, Error> {
+    fn schedule(&mut self, delta: Delta) {
+        self.queue.push_back(delta);
+    }
+
+    async fn process_request(&mut self, request: ClientToServer) -> Result<Reaction, Error> {
         match request {
             ClientToServer::CreateSession(creds) => {
                 // TODO: `Engine` needs high level functions like `engine.create_session(creds)`
@@ -143,19 +155,16 @@ impl LiveHandler {
                         // TODO: `Engine` have to send LoggedIn event to every `LiveHandler`
                         let key = self.engine.create_session(user.id).await?;
                         self.user_id = Some(user.id);
-                        /* TODO: Schedule LoggedIn notification
                         let update = LoginUpdate::LoggedIn { key };
                         let delta = Delta::LoginUpdate(update);
-                        Ok(ServerToClient::Delta(delta))
-                        */
-                        Ok(ServerToClient::success())
+                        self.schedule(delta);
+                        Ok(Reaction::Success)
                     }
                     Some(_) | None => {
-                        /* TODO: Schedule it
                         let update = LoginUpdate::LoginFail;
-                        Ok(ServerToClient::LoginUpdate(update))
-                        */
-                        Ok(ServerToClient::fail("Bad credentials."))
+                        let delta = Delta::LoginUpdate(update);
+                        self.schedule(delta);
+                        Ok(Reaction::fail("Bad credentials."))
                     }
                 }
             }
@@ -167,19 +176,17 @@ impl LiveHandler {
                     Some(session) if session.key == key => {
                         // TODO: Update session (last_visit field)
                         self.user_id = Some(session.user_id);
-                        /* TODO: Schedule
                         let update = LoginUpdate::LoggedIn { key };
-                        Ok(ServerToClient::LoginUpdate(update))
-                        */
-                        Ok(ServerToClient::success())
+                        let delta = Delta::LoginUpdate(update);
+                        self.schedule(delta);
+                        Ok(Reaction::Success)
                     }
                     Some(_) | None => {
                         // Don't share the reason
-                        /* TODO: Schedule
                         let update = LoginUpdate::LoginFail;
-                        Ok(ServerToClient::LoginUpdate(update))
-                        */
-                        Ok(ServerToClient::fail("Bad session ket."))
+                        let delta = Delta::LoginUpdate(update);
+                        self.schedule(delta);
+                        Ok(Reaction::fail("Bad session ket."))
                     }
                 }
             }
@@ -191,12 +198,12 @@ impl LiveHandler {
                     /* TODO: Schedule
                     Ok(ServerToClient::ChannelCreated(channel_name))
                     */
-                    Ok(ServerToClient::success())
+                    Ok(Reaction::Success)
                 } else {
                     /* TODO: Schedule Channel Added notification for all
                      * (or use `EngineActor` or `LiveActor` to track and send that type of notifications)
                      */
-                    Ok(ServerToClient::fail("Can't create channel"))
+                    Ok(Reaction::fail("Can't create channel"))
                 }
             }
         }

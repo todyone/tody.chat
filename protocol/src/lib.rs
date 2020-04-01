@@ -28,20 +28,6 @@ pub enum ServerToClient {
     Reaction(Reaction),
 }
 
-impl ServerToClient {
-    pub fn success() -> Self {
-        let reaction = Reaction::Success;
-        Self::Reaction(reaction)
-    }
-}
-
-impl ServerToClient {
-    pub fn fail(reason: impl ToString) -> Self {
-        let reaction = Reaction::Fail { reason: reason.to_string() };
-        Self::Reaction(reaction)
-    }
-}
-
 /// `Notification`
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum Delta {
@@ -56,6 +42,14 @@ pub enum Reaction {
     Fail {
         reason: String,
     },
+}
+
+impl Reaction {
+    pub fn fail(reason: impl ToString) -> Self {
+        Self::Fail {
+            reason: reason.to_string(),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

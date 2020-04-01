@@ -48,7 +48,6 @@ pub enum Info {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub enum Action {
-    SendRequest(ClientToServer),
     Subscribe(HashSet<Info>),
 
     // TODO: Remove duplicatied requests
@@ -150,6 +149,7 @@ impl Agent for Connector {
                     }
                 }
                 Ok(ServerToClient::Reaction(reaction)) => {
+                    // Drop active task on any reaction
                     if let Some(task) = self.active_task.take() {
                         // TODO: self.send_reaction_to(task.recipient, reaction);
                     }
@@ -173,20 +173,6 @@ impl Agent for Connector {
     fn handle_input(&mut self, msg: Self::Input, handler: HandlerId) {
         log::trace!("Connector msg: {:?}", msg);
         match msg {
-            Action::SendRequest(request) => {
-                let task = Task {
-                    recipient: handler,
-                    request: Some(request),
-                };
-                self.task_queue.push_back(task);
-                self.process_task();
-            }
-            _ => {
-                todo!();
-            }
-        }
-        /*
-        match msg {
             Action::SetCredentials(creds) => {
                 // Remove automatic login and wait for the new token
                 self.remove_key();
@@ -205,7 +191,6 @@ impl Agent for Connector {
                 self.create_channel(channel_name);
             }
         }
-        */
     }
 
     /// Consumer connected
