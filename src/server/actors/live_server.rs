@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use headers::{ContentType, HeaderMapExt};
 use meio::{wrapper, Actor, Context};
-use protocol::{ClientToServer, ServerToClient};
+use protocol::{request::ClientToServer, response::ServerToClient};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::task::block_in_place;

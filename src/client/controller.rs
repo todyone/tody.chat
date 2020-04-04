@@ -1,5 +1,4 @@
-use crate::network::{CodecError, FramedConnection, ProtocolCodec};
-use protocol::{ClientToServer, ServerToClient};
+use crate::network::ClientConnection;
 use thiserror::Error;
 use tokio::net::TcpStream;
 
@@ -14,21 +13,19 @@ pub enum ControllerError {
     #[error("io error {0}")]
     IoError(#[from] std::io::Error),
     #[error("codec error {0}")]
-    CodecError(#[from] CodecError),
+    CodecError(#[from] crate::network::CodecError),
     #[error("timeout {0}")]
     Timeout(#[from] tokio::time::Elapsed),
 }
 
-type Protocol = ProtocolCodec<ClientToServer, ServerToClient>;
-
 pub struct Controller {
-    connection: FramedConnection<Protocol>,
+    connection: ClientConnection,
 }
 
 impl Controller {
     pub async fn connect(address: &str) -> Result<Self, ControllerError> {
         let stream = TcpStream::connect(address).await?;
-        let connection = FramedConnection::wrap(stream);
+        let connection = ClientConnection::wrap(stream);
         Ok(Self { connection })
     }
 }

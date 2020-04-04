@@ -1,10 +1,10 @@
-use crate::network::{FramedConnection, ProtocolCodec};
+use crate::network::ServerConnection;
 use crate::server::actors::Engine;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use meio::{wrapper, Actor, Context};
-use protocol::{ClientToServer, ServerToClient};
+use protocol::{request::ClientToServer, response::ServerToClient};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -48,10 +48,8 @@ impl CtrlServerActor {
     }
 }
 
-type Protocol = ProtocolCodec<ServerToClient, ClientToServer>;
-
 struct CtrlHandler {
-    connection: FramedConnection<Protocol>,
+    connection: ServerConnection,
     engine: Engine,
 }
 
@@ -61,7 +59,7 @@ impl CtrlHandler {
     }
 
     async fn handle(stream: TcpStream, engine: Engine) {
-        let connection = FramedConnection::wrap(stream);
+        let connection = ServerConnection::wrap(stream);
         let this = Self { connection, engine };
         if let Err(err) = this.routine().await {
             log::error!("CtrlHandler error: {}", err);

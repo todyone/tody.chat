@@ -1,5 +1,6 @@
 use bytes::{Buf, BufMut, BytesMut};
 use futures::stream::{Fuse, StreamExt};
+use protocol::{request::ClientToServer, response::ServerToClient};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryInto;
@@ -9,6 +10,12 @@ use std::ops::{Deref, DerefMut};
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio_util::codec::{Decoder, Encoder, Framed};
+
+pub type ServerConnection = FramedConnection<ServerProtocol>;
+type ServerProtocol = ProtocolCodec<ServerToClient, ClientToServer>;
+
+pub type ClientConnection = FramedConnection<ClientProtocol>;
+type ClientProtocol = ProtocolCodec<ClientToServer, ServerToClient>;
 
 type Connection<T> = Fuse<Framed<TcpStream, T>>;
 
