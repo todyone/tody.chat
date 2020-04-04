@@ -86,6 +86,7 @@ impl AssetHandler {
 }
 
 /// WebSocket handler for `LiveServerActor`.
+/// Session of user's connection.
 struct LiveHandler {
     engine: Engine,
 }

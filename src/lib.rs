@@ -1,2 +1,4 @@
-pub mod actors;
-pub mod assets;
+mod actors;
+mod assets;
+mod inner_protocol;
+mod network;
