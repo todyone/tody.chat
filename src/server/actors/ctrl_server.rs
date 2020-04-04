@@ -1,6 +1,6 @@
-use crate::actors::Engine;
-use crate::inner_protocol::{ClientToController, ControllerProtocol, ControllerToClient};
 use crate::network::FramedConnection;
+use crate::protocol::{ClientToController, ControllerProtocol, ControllerToClient};
+use crate::server::actors::Engine;
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};

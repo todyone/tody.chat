@@ -1,5 +1,5 @@
-use crate::actors::Engine;
-use crate::assets::{read_assets, Assets};
+use crate::server::actors::Engine;
+use crate::server::assets::{read_assets, Assets};
 use anyhow::Error;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
