@@ -1,5 +1,5 @@
-use crate::network::{CodecError, FramedConnection};
-use crate::protocol::ClientProtocol;
+use crate::network::{CodecError, FramedConnection, ProtocolCodec};
+use protocol::{ClientToServer, ServerToClient};
 use thiserror::Error;
 use tokio::net::TcpStream;
 
@@ -19,8 +19,10 @@ pub enum ControllerError {
     Timeout(#[from] tokio::time::Elapsed),
 }
 
+type Protocol = ProtocolCodec<ClientToServer, ServerToClient>;
+
 pub struct Controller {
-    connection: FramedConnection<ClientProtocol>,
+    connection: FramedConnection<Protocol>,
 }
 
 impl Controller {
