@@ -1,4 +1,5 @@
 use clap::Clap;
+use protocol::types::*;
 
 #[derive(Clap)]
 pub struct Opts {
@@ -30,8 +31,8 @@ pub enum UserSubCommand {
 
 #[derive(Clap)]
 pub struct UserCreateCommand {
-    pub username: String,
-    pub password: String,
+    pub username: Username,
+    pub password: Password,
 }
 
 #[derive(Clap)]
@@ -52,11 +53,11 @@ pub enum ChannelSubCommand {
 
 #[derive(Clap)]
 pub struct ChannelCreateCommand {
-    pub channel: String,
-    pub username: String,
+    pub channel: ChannelName,
+    pub username: Username,
 }
 
 #[derive(Clap)]
 pub struct ChannelDeleteCommand {
-    pub channel: String,
+    pub channel: ChannelName,
 }

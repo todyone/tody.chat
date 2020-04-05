@@ -12,7 +12,7 @@ pub mod deltas {
 
     #[derive(Deserialize, Serialize, Debug, Clone)]
     pub enum Session {
-        LoggedIn { key: Key },
+        LoggedIn { key: Option<Key> },
         LoginFailed,
     }
 }

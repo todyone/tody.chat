@@ -7,8 +7,9 @@ use tody_chat::{Client, Server};
 async fn main() -> Result<(), Error> {
     let opts: Opts = Opts::parse();
     if let SubCommand::Run = opts.subcmd {
-        Server::new(opts).run().await
+        Server::new(opts).run().await?;
     } else {
-        Client::new(opts).run().await
+        Client::connect().await?.execute(opts).await?;
     }
+    Ok(())
 }
