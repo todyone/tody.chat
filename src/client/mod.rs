@@ -33,6 +33,7 @@ impl Client {
                 self.controller.subscribe(info.clone()).await?;
                 // 2. Send a request to create a new user
                 let action = actions::User::Create(user_create.username);
+                self.controller.send(action).await?;
                 // 3. Wait for the result
                 // 4. Unsubscribe
                 self.controller.unsubscribe(info.clone()).await?;

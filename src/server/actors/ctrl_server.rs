@@ -59,11 +59,14 @@ impl CtrlHandler {
     }
 
     async fn handle(stream: TcpStream, engine: Engine) {
+        let addr = stream.peer_addr().ok();
+        log::debug!("CtrlHandler started for: {:?}", addr);
         let connection = ServerConnection::wrap(stream);
         let this = Self { connection, engine };
         if let Err(err) = this.routine().await {
             log::error!("CtrlHandler error: {}", err);
         }
+        log::debug!("CtrlHandler finished for: {:?}", addr);
     }
 
     async fn send(&mut self, response: ServerToClient) -> Result<(), Error> {
@@ -71,7 +74,6 @@ impl CtrlHandler {
     }
 
     async fn routine(mut self) -> Result<(), Error> {
-        log::debug!("CtrlHandler started");
         while let Some(msg) = self.connection.next().await.transpose()? {
             log::trace!("Ctrl message: {:?}", msg);
         }

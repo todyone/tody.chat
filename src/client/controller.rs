@@ -41,11 +41,11 @@ impl Controller {
         Ok(Self { connection })
     }
 
-    async fn send(&mut self, msg: impl Into<ClientToServer>) -> Result<(), Error> {
+    pub async fn send(&mut self, msg: impl Into<ClientToServer>) -> Result<(), Error> {
         self.connection.send(msg.into()).await.map_err(Error::from)
     }
 
-    async fn recv(&mut self) -> Result<ServerToClient, Error> {
+    pub async fn recv(&mut self) -> Result<ServerToClient, Error> {
         timeout(
             Duration::from_secs(WAIT_TIMEOUT_SEC),
             self.connection.next(),
